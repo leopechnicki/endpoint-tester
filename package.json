@@ -1,0 +1,40 @@
+{
+  "name": "endpoint-tester",
+  "version": "0.1.0",
+  "description": "Auto-discover API endpoints and generate comprehensive test suites",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "endpoint-tester": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "lint": "eslint src/",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "glob": "^11.0.0",
+    "typescript": "^5.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "vitest": "^2.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.3.0"
+  },
+  "license": "MIT",
+  "keywords": [
+    "api",
+    "testing",
+    "endpoint",
+    "test-generation",
+    "express",
+    "fastapi",
+    "spring"
+  ],
+  "engines": {
+    "node": ">=20"
+  }
+}
