@@ -16,7 +16,9 @@ export class Scanner {
   async scan(options: ScanOptions): Promise<Endpoint[]> {
     const adapter = this.adapter ?? getAdapter(options.framework);
     const extensions = adapter.fileExtensions.map((ext) => ext.replace(/^\./, ""));
-    const pattern = `**/*.{${extensions.join(",")}}`;
+    const pattern = extensions.length === 1
+      ? `**/*.${extensions[0]}`
+      : `**/*.{${extensions.join(",")}}`;
 
     const defaultExclude = ["node_modules/**", "dist/**", "build/**", ".git/**"];
     const exclude = [...defaultExclude, ...(options.exclude ?? [])];
