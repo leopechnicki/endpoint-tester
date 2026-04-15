@@ -1,6 +1,10 @@
 import type { Adapter } from "../types.js";
 import { Framework } from "../types.js";
 import { ExpressAdapter } from "./express.js";
+import { FastAPIAdapter } from "./fastapi.js";
+import { SpringAdapter } from "./spring.js";
+import { DjangoAdapter } from "./django.js";
+import { FlaskAdapter } from "./flask.js";
 
 const adapterRegistry = new Map<Framework, Adapter>();
 
@@ -24,5 +28,9 @@ export function getAvailableFrameworks(): Framework[] {
 
 // Register built-in adapters
 registerAdapter(new ExpressAdapter());
+registerAdapter(new FastAPIAdapter());
+registerAdapter(new SpringAdapter());
+registerAdapter(new DjangoAdapter());
+registerAdapter(new FlaskAdapter());
 
-export { ExpressAdapter };
+export { ExpressAdapter, FastAPIAdapter, SpringAdapter, DjangoAdapter, FlaskAdapter };
