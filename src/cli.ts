@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
-import { resolve } from "node:path";
+import { resolve, dirname, extname, basename } from "node:path";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { Scanner } from "./scanner.js";
 import { TestGenerator } from "./generator.js";
@@ -60,7 +60,11 @@ program
     "Framework to scan for (express, fastapi, spring)",
     "express",
   )
-  .option("-o, --output <dir>", "Output directory for test files", "./generated-tests")
+  .option(
+    "-o, --output <path>",
+    "Output path — directory or file (e.g. ./tests or ./tests/api.test.ts)",
+    "./generated-tests",
+  )
   .option("--format <format>", "Test format (vitest, jest, pytest)", "vitest")
   .option("--base-url <url>", "Base URL for tests", "http://localhost:3000")
   .action(
@@ -100,11 +104,21 @@ program
         baseUrl: options.baseUrl,
       });
 
-      const outDir = resolve(options.output);
-      mkdirSync(outDir, { recursive: true });
+      const outputPath = resolve(options.output);
+      const outputExt = extname(outputPath);
+      let outFile: string;
 
-      const ext = options.format === "pytest" ? "py" : "ts";
-      const outFile = resolve(outDir, `endpoints.test.${ext}`);
+      if (outputExt) {
+        // User provided a file path (e.g. ./tests/api.test.ts)
+        mkdirSync(dirname(outputPath), { recursive: true });
+        outFile = outputPath;
+      } else {
+        // User provided a directory path
+        mkdirSync(outputPath, { recursive: true });
+        const ext = options.format === "pytest" ? "py" : "ts";
+        outFile = resolve(outputPath, `endpoints.test.${ext}`);
+      }
+
       writeFileSync(outFile, testContent);
 
       console.log(`Tests written to ${outFile}`);

@@ -29,9 +29,32 @@ endpoint-tester generate ./src --format jest --base-url http://localhost:8080
 | Option          | Description                              | Default                |
 | --------------- | ---------------------------------------- | ---------------------- |
 | `--framework`   | Framework adapter (express, fastapi, spring) | `express`          |
-| `--output`      | Output directory for generated tests     | `./generated-tests`    |
+| `-o, --output`  | Output path — directory or file path     | `./generated-tests`    |
 | `--format`      | Test format (vitest, jest, pytest)        | `vitest`               |
 | `--base-url`    | Base URL for test requests               | `http://localhost:3000`|
+
+The `--output` flag accepts either a directory or a specific file path:
+
+```bash
+# Output to a directory (file named endpoints.test.ts automatically)
+endpoint-tester generate ./src --output ./tests
+
+# Output to a specific file
+endpoint-tester generate ./src --output ./tests/api.test.ts
+```
+
+## Test formats: Jest vs Vitest
+
+Both `jest` and `vitest` formats generate `.ts` test files. The key differences:
+
+| Feature          | Vitest                                         | Jest                                      |
+| ---------------- | ---------------------------------------------- | ----------------------------------------- |
+| **Imports**      | Explicit `import { describe, it, expect }`     | Uses globals (no import statement)        |
+| **File extension** | `.ts`                                        | `.ts`                                     |
+| **Config needed** | `vitest.config.ts`                            | `jest.config.ts` with `ts-jest` or SWC    |
+| **Assertions**   | Method-specific status codes (`toBe(201)`)     | Same                                      |
+
+Both formats now generate **method-specific assertions** (POST expects 201, DELETE expects 204, etc.), **boundary value tests** for path parameters, **auth header tests**, and **error response tests** for endpoints that accept a body.
 
 ## Supported frameworks
 
