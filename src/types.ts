@@ -2,6 +2,8 @@ export enum Framework {
   Express = "express",
   FastAPI = "fastapi",
   Spring = "spring",
+  Django = "django",
+  Flask = "flask",
 }
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS";

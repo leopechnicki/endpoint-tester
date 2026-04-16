@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "endpoint-tester": "./dist/cli.js"
+    "endpoint-tester": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
@@ -33,7 +33,23 @@
     "test-generation",
     "express",
     "fastapi",
-    "spring"
+    "spring",
+    "cli",
+    "automation"
+  ],
+  "author": "Leonardo Pechnicki <leopsantos@hotmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/leopechnicki/endpoint-tester.git"
+  },
+  "homepage": "https://github.com/leopechnicki/endpoint-tester#readme",
+  "bugs": {
+    "url": "https://github.com/leopechnicki/endpoint-tester/issues"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=20"
