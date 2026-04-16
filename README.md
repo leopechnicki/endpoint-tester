@@ -107,17 +107,19 @@ const tests = generator.generate({ endpoints, output: "./tests", format: "vitest
 
 ## Extending with custom adapters
 
-endpoint-tester uses an extensible adapter pattern. To add support for a new framework, implement the `FrameworkAdapter` interface:
+endpoint-tester uses an extensible adapter pattern. To add support for a new framework, implement the `Adapter` interface:
 
 ```typescript
-import { FrameworkAdapter, Endpoint } from "endpoint-tester";
+import { Adapter, Endpoint, Framework } from "endpoint-tester";
 
-class MyFrameworkAdapter implements FrameworkAdapter {
-  name = "my-framework";
+class MyFrameworkAdapter implements Adapter {
+  framework = Framework.Express; // use the closest built-in, or extend the enum
+  fileExtensions = [".ts", ".js"];
 
-  extractEndpoints(fileContent: string, filePath: string): Endpoint[] {
+  parse(source: string, filePath?: string): Endpoint[] {
     // Parse your framework's route definitions
     // Return an array of Endpoint objects
+    return [];
   }
 }
 ```

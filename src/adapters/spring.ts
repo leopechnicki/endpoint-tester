@@ -140,7 +140,7 @@ export class SpringAdapter implements Adapter {
     // Match class-level @RequestMapping("/prefix")
     // Must appear before any class method definitions
     const classAnnotation = source.match(
-      /@RequestMapping\s*\(\s*(?:value\s*=\s*)?['"]([^'"]+)['"]\s*\)\s*\n\s*(?:public\s+)?class/,
+      /@RequestMapping\s*\(\s*(?:value\s*=\s*)?['"]([^'"]+)['"]\s*\)\s+(?:public\s+)?class/,
     );
     if (classAnnotation) return classAnnotation[1];
 

@@ -23,6 +23,17 @@ const BOUNDARY_VALUES: Record<string, string[]> = {
   id: ['"0"', '"-1"', '"nonexistent"'],
 };
 
+/**
+ * Escape a value for safe embedding inside a double-quoted string literal.
+ * Handles backslashes, double quotes, and backticks.
+ */
+function escapeForStringLiteral(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/`/g, "\\`");
+}
+
 export class TestGenerator {
   /**
    * Generate test file content for the given endpoints.
@@ -51,7 +62,7 @@ export class TestGenerator {
     const lines: string[] = [
       `import { describe, it, expect } from "vitest";`,
       ``,
-      `const BASE_URL = "${baseUrl}";`,
+      `const BASE_URL = "${escapeForStringLiteral(baseUrl)}";`,
       ``,
     ];
 
@@ -89,7 +100,7 @@ export class TestGenerator {
       `// Both Jest and Vitest generate .ts files; Jest relies on globals while`,
       `// Vitest uses explicit imports. See README for configuration details.`,
       ``,
-      `const BASE_URL = "${baseUrl}";`,
+      `const BASE_URL = "${escapeForStringLiteral(baseUrl)}";`,
       ``,
     ];
 
@@ -121,7 +132,7 @@ export class TestGenerator {
       `import requests`,
       `import pytest`,
       ``,
-      `BASE_URL = "${baseUrl}"`,
+      `BASE_URL = "${escapeForStringLiteral(baseUrl)}"`,
       ``,
     ];
 
@@ -129,15 +140,18 @@ export class TestGenerator {
       const testPath = this.buildTestPath(ep);
       const funcName = this.toPythonFuncName(ep);
       const expectedStatus = this.getExpectedStatus(ep.method);
+      const safeMethod = escapeForStringLiteral(ep.method);
+      const safePath = escapeForStringLiteral(ep.path);
+      const safeTestPath = escapeForStringLiteral(testPath);
 
       // Main success test
       lines.push(`def ${funcName}():`);
-      lines.push(`    """Test ${ep.method} ${ep.path}"""`);
+      lines.push(`    """Test ${safeMethod} ${safePath}"""`);
 
       if (this.hasBody(ep)) {
-        lines.push(`    response = requests.${ep.method.toLowerCase()}(f"{BASE_URL}${testPath}", json={})`);
+        lines.push(`    response = requests.${ep.method.toLowerCase()}(f"{BASE_URL}${safeTestPath}", json={})`);
       } else {
-        lines.push(`    response = requests.${ep.method.toLowerCase()}(f"{BASE_URL}${testPath}")`);
+        lines.push(`    response = requests.${ep.method.toLowerCase()}(f"{BASE_URL}${safeTestPath}")`);
       }
       lines.push(`    assert response.status_code == ${expectedStatus}`);
       lines.push(``);
@@ -145,24 +159,24 @@ export class TestGenerator {
       // Error test for body endpoints
       if (this.hasBody(ep)) {
         lines.push(`def ${funcName}_empty_body():`);
-        lines.push(`    """Test ${ep.method} ${ep.path} with empty body returns 4xx"""`);
-        lines.push(`    response = requests.${ep.method.toLowerCase()}(f"{BASE_URL}${testPath}")`);
+        lines.push(`    """Test ${safeMethod} ${safePath} with empty body returns 4xx"""`);
+        lines.push(`    response = requests.${ep.method.toLowerCase()}(f"{BASE_URL}${safeTestPath}")`);
         lines.push(`    assert 400 <= response.status_code < 500`);
         lines.push(``);
       }
 
       // Auth header test
       lines.push(`def ${funcName}_with_auth():`);
-      lines.push(`    """Test ${ep.method} ${ep.path} with Authorization header"""`);
+      lines.push(`    """Test ${safeMethod} ${safePath} with Authorization header"""`);
       if (this.hasBody(ep)) {
         lines.push(`    response = requests.${ep.method.toLowerCase()}(`);
-        lines.push(`        f"{BASE_URL}${testPath}",`);
+        lines.push(`        f"{BASE_URL}${safeTestPath}",`);
         lines.push(`        json={},`);
         lines.push(`        headers={"Authorization": "Bearer test-token"},`);
         lines.push(`    )`);
       } else {
         lines.push(`    response = requests.${ep.method.toLowerCase()}(`);
-        lines.push(`        f"{BASE_URL}${testPath}",`);
+        lines.push(`        f"{BASE_URL}${safeTestPath}",`);
         lines.push(`        headers={"Authorization": "Bearer test-token"},`);
         lines.push(`    )`);
       }
@@ -176,10 +190,13 @@ export class TestGenerator {
         for (const val of values) {
           const cleanVal = val.replace(/"/g, "");
           const boundaryPath = ep.path.replace(`:${param.name}`, cleanVal);
+          const safeBoundaryPath = escapeForStringLiteral(boundaryPath);
+          const safeParamName = escapeForStringLiteral(param.name);
+          const safeCleanVal = escapeForStringLiteral(cleanVal);
           const safeName = this.sanitizePythonName(`${funcName}_boundary_${param.name}_${cleanVal}`);
           lines.push(`def ${safeName}():`);
-          lines.push(`    """Test ${ep.method} ${ep.path} with boundary ${param.name}=${cleanVal}"""`);
-          lines.push(`    response = requests.${ep.method.toLowerCase()}(f"{BASE_URL}${boundaryPath}")`);
+          lines.push(`    """Test ${safeMethod} ${safePath} with boundary ${safeParamName}=${safeCleanVal}"""`);
+          lines.push(`    response = requests.${ep.method.toLowerCase()}(f"{BASE_URL}${safeBoundaryPath}")`);
           lines.push(`    assert response.status_code < 500`);
           lines.push(``);
         }
@@ -194,10 +211,13 @@ export class TestGenerator {
   private appendTsSuccessTest(lines: string[], ep: Endpoint): void {
     const testPath = this.buildTestPath(ep);
     const expectedStatus = this.getExpectedStatus(ep.method);
+    const safeMethod = escapeForStringLiteral(ep.method);
+    const safePath = escapeForStringLiteral(ep.path);
+    const safeTestPath = escapeForStringLiteral(testPath);
 
-    lines.push(`  it("${ep.method} ${ep.path} should return ${expectedStatus}", async () => {`);
-    lines.push(`    const response = await fetch(\`\${BASE_URL}${testPath}\`, {`);
-    lines.push(`      method: "${ep.method}",`);
+    lines.push(`  it("${safeMethod} ${safePath} should return ${expectedStatus}", async () => {`);
+    lines.push(`    const response = await fetch(\`\${BASE_URL}${safeTestPath}\`, {`);
+    lines.push(`      method: "${safeMethod}",`);
 
     if (this.hasBody(ep)) {
       lines.push(`      headers: { "Content-Type": "application/json" },`);
@@ -213,10 +233,13 @@ export class TestGenerator {
 
   private appendTsErrorTest(lines: string[], ep: Endpoint): void {
     const testPath = this.buildTestPath(ep);
+    const safeMethod = escapeForStringLiteral(ep.method);
+    const safePath = escapeForStringLiteral(ep.path);
+    const safeTestPath = escapeForStringLiteral(testPath);
 
-    lines.push(`  it("${ep.method} ${ep.path} without body should return 400", async () => {`);
-    lines.push(`    const response = await fetch(\`\${BASE_URL}${testPath}\`, {`);
-    lines.push(`      method: "${ep.method}",`);
+    lines.push(`  it("${safeMethod} ${safePath} without body should return 400", async () => {`);
+    lines.push(`    const response = await fetch(\`\${BASE_URL}${safeTestPath}\`, {`);
+    lines.push(`      method: "${safeMethod}",`);
     lines.push(`    });`);
     lines.push(``);
     lines.push(`    expect(response.status).toBeGreaterThanOrEqual(400);`);
@@ -236,10 +259,15 @@ export class TestGenerator {
       for (const val of values) {
         const cleanVal = val.replace(/"/g, "");
         const boundaryPath = ep.path.replace(`:${param.name}`, cleanVal);
+        const safeMethod = escapeForStringLiteral(ep.method);
+        const safePath = escapeForStringLiteral(ep.path);
+        const safeBoundaryPath = escapeForStringLiteral(boundaryPath);
+        const safeParamName = escapeForStringLiteral(param.name);
+        const safeCleanVal = escapeForStringLiteral(cleanVal);
 
-        lines.push(`  it("${ep.method} ${ep.path} with ${param.name}=${cleanVal} should not 500", async () => {`);
-        lines.push(`    const response = await fetch(\`\${BASE_URL}${boundaryPath}\`, {`);
-        lines.push(`      method: "${ep.method}",`);
+        lines.push(`  it("${safeMethod} ${safePath} with ${safeParamName}=${safeCleanVal} should not 500", async () => {`);
+        lines.push(`    const response = await fetch(\`\${BASE_URL}${safeBoundaryPath}\`, {`);
+        lines.push(`      method: "${safeMethod}",`);
         lines.push(`    });`);
         lines.push(``);
         lines.push(`    expect(response.status).toBeLessThan(500);`);
@@ -251,10 +279,13 @@ export class TestGenerator {
 
   private appendTsAuthTest(lines: string[], ep: Endpoint): void {
     const testPath = this.buildTestPath(ep);
+    const safeMethod = escapeForStringLiteral(ep.method);
+    const safePath = escapeForStringLiteral(ep.path);
+    const safeTestPath = escapeForStringLiteral(testPath);
 
-    lines.push(`  it("${ep.method} ${ep.path} with auth header should not 500", async () => {`);
-    lines.push(`    const response = await fetch(\`\${BASE_URL}${testPath}\`, {`);
-    lines.push(`      method: "${ep.method}",`);
+    lines.push(`  it("${safeMethod} ${safePath} with auth header should not 500", async () => {`);
+    lines.push(`    const response = await fetch(\`\${BASE_URL}${safeTestPath}\`, {`);
+    lines.push(`      method: "${safeMethod}",`);
 
     if (this.hasBody(ep)) {
       lines.push(`      headers: { "Content-Type": "application/json", "Authorization": "Bearer test-token" },`);
@@ -279,8 +310,9 @@ export class TestGenerator {
   private buildSampleBody(ep: Endpoint): string {
     if (ep.body?.fields && Object.keys(ep.body.fields).length > 0) {
       const entries = Object.entries(ep.body.fields).map(([key, type]) => {
-        const sampleValue = type === "number" || type === "integer" ? "1" : `"test-${key}"`;
-        return `${key}: ${sampleValue}`;
+        const safeKey = escapeForStringLiteral(key);
+        const sampleValue = type === "number" || type === "integer" ? "1" : `"test-${safeKey}"`;
+        return `"${safeKey}": ${sampleValue}`;
       });
       return `{ ${entries.join(", ")} }`;
     }
