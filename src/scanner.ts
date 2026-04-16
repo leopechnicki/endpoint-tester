@@ -6,15 +6,15 @@ import { getAdapter } from "./adapters/index.js";
 export class Scanner {
   private adapter: Adapter;
 
-  constructor(adapter?: Adapter) {
-    this.adapter = adapter ?? getAdapter(undefined as never);
+  constructor(adapter: Adapter) {
+    this.adapter = adapter;
   }
 
   /**
    * Scan a directory for API endpoints using the configured adapter.
    */
   async scan(options: ScanOptions): Promise<Endpoint[]> {
-    const adapter = this.adapter ?? getAdapter(options.framework);
+    const adapter = this.adapter;
     const extensions = adapter.fileExtensions.map((ext) => ext.replace(/^\./, ""));
     const pattern = extensions.length === 1
       ? `**/*.${extensions[0]}`
@@ -32,7 +32,13 @@ export class Scanner {
     const endpoints: Endpoint[] = [];
 
     for (const file of files) {
-      const source = readFileSync(file, "utf-8");
+      let source: string;
+      try {
+        source = readFileSync(file, "utf-8");
+      } catch (err) {
+        console.warn(`Warning: could not read file ${file}: ${(err as Error).message}`);
+        continue;
+      }
       const found = adapter.parse(source, file);
       endpoints.push(...found);
     }

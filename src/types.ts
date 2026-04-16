@@ -47,8 +47,6 @@ export interface Adapter {
 export interface ScanOptions {
   directory: string;
   framework: Framework;
-  /** Glob patterns to include */
-  include?: string[];
   /** Glob patterns to exclude */
   exclude?: string[];
 }

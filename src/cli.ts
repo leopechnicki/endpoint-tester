@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
-import { resolve, dirname, extname, basename } from "node:path";
-import { writeFileSync, mkdirSync } from "node:fs";
+import { resolve, dirname, extname } from "node:path";
+import { writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import { Scanner } from "./scanner.js";
 import { TestGenerator } from "./generator.js";
 import { getAdapter } from "./adapters/index.js";
@@ -10,10 +10,14 @@ import { Framework } from "./types.js";
 
 const program = new Command();
 
+const { version } = JSON.parse(
+  readFileSync(resolve(__dirname, "../package.json"), "utf-8"),
+) as { version: string };
+
 program
   .name("endpoint-tester")
   .description("Auto-discover API endpoints and generate comprehensive test suites")
-  .version("0.1.0");
+  .version(version);
 
 program
   .command("scan")
@@ -21,7 +25,7 @@ program
   .argument("<directory>", "Directory to scan")
   .option(
     "-f, --framework <framework>",
-    "Framework to scan for (express, fastapi, spring)",
+    "Framework to scan for (express, fastapi, spring, django, flask)",
     "express",
   )
   .option("-o, --output <file>", "Output file for results (JSON)")
@@ -57,7 +61,7 @@ program
   .argument("<directory>", "Directory to scan for endpoints")
   .option(
     "-f, --framework <framework>",
-    "Framework to scan for (express, fastapi, spring)",
+    "Framework to scan for (express, fastapi, spring, django, flask)",
     "express",
   )
   .option(
