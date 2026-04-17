@@ -2,7 +2,7 @@
 
 # endpoint-tester
 
-**Auto-discover API endpoints and generate comprehensive test suites.**
+**Auto-discover API endpoints in your source code and generate ready-to-run test suites.**
 
 [![npm version](https://img.shields.io/npm/v/endpoint-tester.svg?style=flat-square&color=3b82f6)](https://www.npmjs.com/package/endpoint-tester)
 [![npm downloads](https://img.shields.io/npm/dw/endpoint-tester.svg?style=flat-square&color=10b981)](https://www.npmjs.com/package/endpoint-tester)
@@ -10,29 +10,36 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://github.com/leopechnicki/endpoint-tester)
 [![CI](https://img.shields.io/github/actions/workflow/status/leopechnicki/endpoint-tester/publish.yml?style=flat-square&label=CI)](https://github.com/leopechnicki/endpoint-tester/actions)
 
-[npm](https://www.npmjs.com/package/endpoint-tester) · [Dev.to Article](https://dev.to/leo_pechnicki/endpoint-tester-auto-discover-api-endpoints-generate-tests-3d5j) · [GitHub](https://github.com/leopechnicki/endpoint-tester)
+[npm](https://www.npmjs.com/package/endpoint-tester) · [GitHub](https://github.com/leopechnicki/endpoint-tester) · [Dev.to Article](https://dev.to/leo_pechnicki/endpoint-tester-auto-discover-api-endpoints-generate-tests-3d5j)
 
 </div>
 
 ---
 
-## Why?
+## The problem
 
-Every API project needs endpoint tests, and writing them manually is tedious, repetitive work. You copy-paste test files, update paths, remember which params go where, and hope you didn't miss a route.
+Every API project needs endpoint tests. Writing them is tedious, repetitive, and error-prone: you copy-paste test files, update paths, remember which params go where, and hope you didn't miss a route. When the codebase changes, the tests fall behind.
 
-**endpoint-tester** scans your source code, discovers all API endpoints automatically, and generates ready-to-run test suites. It supports 5 frameworks and 3 test formats out of the box, with an extensible adapter pattern for anything else.
+## The solution
 
-## How it works
-
-endpoint-tester parses your route definitions — decorators, router configs, annotations — and outputs structured endpoint metadata plus test files. Each generated test hits the route and asserts the server responds correctly, giving you a smoke test baseline in seconds instead of hours.
+**endpoint-tester** scans your source code, discovers every API endpoint automatically, and generates test suites that are ready to run. Point it at your project, get a complete test file in seconds.
 
 ```
-src/routes/users.ts
-  1. Scan route definitions
-  2. Extract endpoints (GET /users, POST /users/:id, ...)
-  3. Generate test file with method-specific assertions
-  4. Output ready-to-run test suite
+Source code in  -->  [endpoint-tester]  -->  Test suite out
+  Express                                     Vitest / Jest
+  FastAPI                                     Pytest
+  Spring Boot
+  Flask
+  Django
 ```
+
+## Features
+
+- **Auto-detection** -- Detects your framework automatically from package.json, requirements.txt, pom.xml, or source imports. No config needed.
+- **5 framework adapters** -- Express.js, FastAPI, Spring Boot, Flask, Django. Extensible for any framework via the Adapter interface.
+- **3 test formats** -- Vitest, Jest, Pytest. Generated tests include status code assertions, auth header tests, error response tests, and boundary value tests.
+- **Smart route parsing** -- Handles router prefixes, middleware chains, `app.route()` chaining, multi-line decorators, class-level annotations, Blueprints, and more.
+- **Zero config** -- Works out of the box. One command, one output.
 
 ## Install
 
@@ -40,97 +47,157 @@ src/routes/users.ts
 npm install -g endpoint-tester
 ```
 
-## Quick start
-
-### Scan for endpoints
+Or use without installing:
 
 ```bash
-endpoint-tester scan ./src --framework express
-endpoint-tester scan ./src --framework express --output endpoints.json
+npx endpoint-tester scan ./src
 ```
 
-### Generate tests
+## Quick start
 
 ```bash
-endpoint-tester generate ./src --framework express --format vitest --output ./tests
+# Scan for endpoints (auto-detects framework)
+endpoint-tester scan ./src
+
+# Scan with explicit framework
+endpoint-tester scan ./src --framework fastapi
+
+# Generate test suite
+endpoint-tester generate ./src --format vitest --output ./tests/api.test.ts
+
+# Generate with custom base URL
 endpoint-tester generate ./src --format jest --base-url http://localhost:8080
 ```
 
-## CLI options
+### Example output
 
-| Option          | Description                              | Default                |
-| --------------- | ---------------------------------------- | ---------------------- |
-| `--framework`   | Framework adapter (express, fastapi, spring, flask, django) | `express` |
-| `-o, --output`  | Output path — directory or file path     | `./generated-tests`    |
-| `--format`      | Test format (vitest, jest, pytest)        | `vitest`               |
-| `--base-url`    | Base URL for test requests               | `http://localhost:3000` |
+Given an Express app:
 
-The `--output` flag accepts either a directory or a specific file path:
-
-```bash
-# Output to a directory (file named endpoints.test.ts automatically)
-endpoint-tester generate ./src --output ./tests
-
-# Output to a specific file
-endpoint-tester generate ./src --output ./tests/api.test.ts
+```typescript
+// src/routes/users.ts
+router.get('/users', listUsers);
+router.post('/users', createUser);
+router.get('/users/:id', getUser);
+router.put('/users/:id', updateUser);
+router.delete('/users/:id', deleteUser);
 ```
+
+Running `endpoint-tester scan ./src` outputs:
+
+```
+Auto-detected framework: express (high confidence)
+Scanning ./src for express endpoints...
+Found 5 endpoint(s):
+
+  GET     /users
+  POST    /users
+  GET     /users/:id [params: id]
+  PUT     /users/:id [params: id]
+  DELETE  /users/:id [params: id]
+```
+
+Running `endpoint-tester generate ./src --format vitest` generates a complete test file with:
+
+- Success tests with method-specific status codes (POST expects 201, DELETE expects 204, etc.)
+- Auth header tests (Bearer token)
+- Error response tests (missing body returns 4xx)
+- Boundary value tests for path parameters (empty, negative, nonexistent)
+
+## CLI reference
+
+| Option | Description | Default |
+|---|---|---|
+| `--framework` / `-f` | Framework adapter (express, fastapi, spring, django, flask). Auto-detected if omitted. | auto-detect |
+| `--output` / `-o` | Output path -- directory or file path | `./generated-tests` |
+| `--format` | Test format (vitest, jest, pytest) | `vitest` |
+| `--base-url` | Base URL for test requests | `http://localhost:3000` |
 
 ## Supported frameworks
 
-- **Express.js** — Detects `app.get()`, `router.post()`, route params, nested routers
-- **FastAPI** — Decorators, `APIRouter` prefixes, typed parameters
-- **Spring Boot** — `@RequestMapping`, `@GetMapping`, `@PathVariable` annotations
-- **Flask** — Blueprints, typed route parameters
-- **Django** — `path()`, `re_path()`, URL patterns
+| Framework | Patterns detected |
+|---|---|
+| **Express.js** | `app.get()`, `router.post()`, `app.route().get().post()`, route params, router prefixes via `app.use()` and `router.use()`, middleware chains |
+| **FastAPI** | `@app.get()`, `@router.post()`, `APIRouter` prefixes, `{param}` parameters, multi-line decorators with kwargs |
+| **Spring Boot** | `@GetMapping`, `@PostMapping`, `@RequestMapping` (both argument orderings), class-level `@RequestMapping` prefix, `@PathVariable`, multiline annotations, Kotlin `fun` syntax |
+| **Flask** | `@app.route()` with methods list, `@app.get()` shorthand, `Blueprint` url_prefix, typed parameters (`<int:id>`) |
+| **Django** | `path()`, `re_path()`, typed parameters (`<int:pk>`), regex named groups |
 
-## Test formats: Jest vs Vitest vs Pytest
+## Test formats
 
-| Feature          | Vitest                                         | Jest                                      | Pytest                |
-| ---------------- | ---------------------------------------------- | ----------------------------------------- | --------------------- |
-| **Imports**      | Explicit `import { describe, it, expect }`     | Uses globals (no import statement)        | `import requests`     |
-| **File extension** | `.ts`                                        | `.ts`                                     | `.py`                 |
-| **Assertions**   | Method-specific status codes (`toBe(201)`)     | Same                                      | `assert response.status_code` |
+| | Vitest | Jest | Pytest |
+|---|---|---|---|
+| **Imports** | `import { describe, it, expect }` | Uses globals (no import) | `import requests` |
+| **File** | `.ts` | `.ts` | `.py` |
+| **Assertions** | `expect(response.status).toBe(201)` | Same | `assert response.status_code == 201` |
 
-All formats generate **method-specific assertions** (POST expects 201, DELETE expects 204, etc.), **boundary value tests** for path parameters, **auth header tests**, and **error response tests** for endpoints that accept a body.
+All formats generate:
+- Method-specific status code assertions (GET -> 200, POST -> 201, DELETE -> 204)
+- Auth header tests with Bearer token
+- Error response tests for body-accepting endpoints
+- Boundary value tests for path parameters
 
 ## Programmatic API
 
 ```typescript
-import { Scanner, TestGenerator, ExpressAdapter } from "endpoint-tester";
+import { Scanner, TestGenerator, getAdapter, detectFramework } from "endpoint-tester";
 
-const scanner = new Scanner(new ExpressAdapter());
-const endpoints = await scanner.scan({ directory: "./src", framework: "express" });
+// Auto-detect the framework
+const detected = await detectFramework("./src");
+const adapter = getAdapter(detected.framework);
 
+// Scan for endpoints
+const scanner = new Scanner(adapter);
+const endpoints = await scanner.scan({ directory: "./src", framework: detected.framework });
+
+// Generate tests
 const generator = new TestGenerator();
-const tests = generator.generate({ endpoints, output: "./tests", format: "vitest" });
+const tests = generator.generate({
+  endpoints,
+  output: "./tests",
+  format: "vitest",
+  baseUrl: "http://localhost:3000",
+});
 ```
 
-## Extending with custom adapters
+## Custom adapters
 
-endpoint-tester uses an extensible adapter pattern. To add support for a new framework, implement the `Adapter` interface:
+Implement the `Adapter` interface to add support for any framework:
 
 ```typescript
-import { Adapter, Endpoint, Framework } from "endpoint-tester";
+import { Adapter, Endpoint, Framework, registerAdapter } from "endpoint-tester";
 
-class MyFrameworkAdapter implements Adapter {
-  framework = Framework.Express; // use the closest built-in, or extend the enum
+class HonoAdapter implements Adapter {
+  framework = "hono" as Framework;
   fileExtensions = [".ts", ".js"];
 
   parse(source: string, filePath?: string): Endpoint[] {
-    // Parse your framework's route definitions
-    // Return an array of Endpoint objects
+    // Your parsing logic here
     return [];
   }
 }
+
+registerAdapter(new HonoAdapter());
 ```
+
+## Comparison with alternatives
+
+| | endpoint-tester | Writing tests manually | Postman export |
+|---|---|---|---|
+| **Setup time** | 0 (auto-detects) | N/A | Import collection |
+| **Keeps up with code** | Re-scan anytime | Manual updates | Re-export |
+| **Boundary tests** | Automatic | Write each one | Manual |
+| **Auth tests** | Automatic | Write each one | Configure per request |
+| **Multi-framework** | 5 built-in | N/A | Framework-agnostic |
+| **CI friendly** | CLI output | Already in repo | Needs Newman |
 
 ## Contributing
 
-Contributions are welcome! We're especially looking for help with:
+Contributions are welcome. Areas with the most impact:
 
-- New framework adapters (Hono, Koa, NestJS, etc.)
-- Additional test format outputs
-- Better endpoint detection heuristics
+- New framework adapters (Hono, Koa, NestJS, Gin, etc.)
+- Smarter body inference from type annotations
+- OpenAPI/Swagger output format
+- Watch mode for continuous test generation
 
 ```bash
 git clone https://github.com/leopechnicki/endpoint-tester.git

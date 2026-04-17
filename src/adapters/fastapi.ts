@@ -10,6 +10,7 @@ const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"
  *   @app.get("/path")
  *   @router.post("/path")
  *   Path parameters like {id}
+ *   Multi-line decorators with additional kwargs
  */
 export class FastAPIAdapter implements Adapter {
   readonly framework = Framework.FastAPI;
@@ -41,14 +42,42 @@ export class FastAPIAdapter implements Adapter {
     routerPrefixes?: Map<string, string>,
   ): Endpoint | null {
     // Match: @identifier.method("/path") or @identifier.method("/path", ...)
+    // Also handle the case where the path is on the same line as the decorator
     const decoratorPattern = new RegExp(
-      `@(\\w+)\\.(${HTTP_METHODS.join("|")})\\s*\\(\\s*['"]([^'"]+)['"]`,
+      `@(\\w+)\\.(${HTTP_METHODS.join("|")})\\s*\\(`,
       "i",
     );
-    const match = line.match(decoratorPattern);
-    if (!match) return null;
+    const decoratorMatch = line.match(decoratorPattern);
+    if (!decoratorMatch) return null;
 
-    const [, identifier, method, path] = match;
+    const [, identifier, method] = decoratorMatch;
+
+    // Collect the full decorator text (may span multiple lines)
+    let decoratorText = line;
+    let openParens = 0;
+    for (let c = 0; c < decoratorText.length; c++) {
+      if (decoratorText[c] === "(") openParens++;
+      if (decoratorText[c] === ")") openParens--;
+    }
+
+    // If parentheses aren't balanced, continue collecting lines
+    let j = lineIndex + 1;
+    while (openParens > 0 && j < Math.min(lineIndex + 10, allLines.length)) {
+      decoratorText += " " + allLines[j].trim();
+      for (let c = 0; c < allLines[j].length; c++) {
+        if (allLines[j][c] === "(") openParens++;
+        if (allLines[j][c] === ")") openParens--;
+      }
+      j++;
+    }
+
+    // Extract the path from the full decorator text
+    const pathMatch = decoratorText.match(
+      new RegExp(`@${identifier}\\.${method}\\s*\\(\\s*['"]([^'"]+)['"]`, "i"),
+    );
+    if (!pathMatch) return null;
+
+    const path = pathMatch[1];
 
     // Determine full path including router prefix
     let fullPath = path;
@@ -83,7 +112,7 @@ export class FastAPIAdapter implements Adapter {
 
   private extractHandler(lines: string[], decoratorIndex: number): string {
     // Look at lines after the decorator for `def function_name`
-    for (let i = decoratorIndex + 1; i < Math.min(decoratorIndex + 5, lines.length); i++) {
+    for (let i = decoratorIndex + 1; i < Math.min(decoratorIndex + 10, lines.length); i++) {
       const defMatch = lines[i].match(/^\s*(?:async\s+)?def\s+(\w+)/);
       if (defMatch) return defMatch[1];
     }

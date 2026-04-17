@@ -7,6 +7,7 @@ import { Scanner } from "./scanner.js";
 import { TestGenerator } from "./generator.js";
 import { getAdapter } from "./adapters/index.js";
 import { Framework } from "./types.js";
+import { detectFramework } from "./detect.js";
 
 const program = new Command();
 
@@ -19,6 +20,25 @@ program
   .description("Auto-discover API endpoints and generate comprehensive test suites")
   .version(version);
 
+/**
+ * Resolve the framework — use the explicit flag if provided, otherwise auto-detect.
+ */
+async function resolveFramework(directory: string, explicitFramework?: string): Promise<Framework> {
+  if (explicitFramework) {
+    return explicitFramework as Framework;
+  }
+
+  const detected = await detectFramework(directory);
+  if (detected) {
+    console.log(`Auto-detected framework: ${detected.framework} (${detected.confidence} confidence — ${detected.reason})`);
+    return detected.framework;
+  }
+
+  console.log("Could not auto-detect framework. Defaulting to express.");
+  console.log("Hint: use --framework to specify explicitly (express, fastapi, spring, django, flask)");
+  return Framework.Express;
+}
+
 program
   .command("scan")
   .description("Scan a directory for API endpoints")
@@ -26,15 +46,14 @@ program
   .option(
     "-f, --framework <framework>",
     "Framework to scan for (express, fastapi, spring, django, flask)",
-    "express",
   )
   .option("-o, --output <file>", "Output file for results (JSON)")
-  .action(async (directory: string, options: { framework: string; output?: string }) => {
-    const framework = options.framework as Framework;
+  .action(async (directory: string, options: { framework?: string; output?: string }) => {
+    const dir = resolve(directory);
+    const framework = await resolveFramework(dir, options.framework);
     const adapter = getAdapter(framework);
     const scanner = new Scanner(adapter);
 
-    const dir = resolve(directory);
     console.log(`Scanning ${dir} for ${framework} endpoints...`);
 
     const endpoints = await scanner.scan({
@@ -62,7 +81,6 @@ program
   .option(
     "-f, --framework <framework>",
     "Framework to scan for (express, fastapi, spring, django, flask)",
-    "express",
   )
   .option(
     "-o, --output <path>",
@@ -75,17 +93,17 @@ program
     async (
       directory: string,
       options: {
-        framework: string;
+        framework?: string;
         output: string;
         format: string;
         baseUrl: string;
       },
     ) => {
-      const framework = options.framework as Framework;
+      const dir = resolve(directory);
+      const framework = await resolveFramework(dir, options.framework);
       const adapter = getAdapter(framework);
       const scanner = new Scanner(adapter);
 
-      const dir = resolve(directory);
       console.log(`Scanning ${dir} for ${framework} endpoints...`);
 
       const endpoints = await scanner.scan({

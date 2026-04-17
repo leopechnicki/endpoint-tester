@@ -10,6 +10,8 @@ const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"
  *   app.get('/path', handler)
  *   app.post('/path', middleware, handler)
  *   router.get('/path', handler)
+ *   app.route('/path').get(handler).post(handler)
+ *   router.use('/prefix', subRouter)
  *   Route parameters like :id
  */
 export class ExpressAdapter implements Adapter {
@@ -25,9 +27,18 @@ export class ExpressAdapter implements Adapter {
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
+
+      // Try standard method pattern first
       const parsed = this.parseLine(line, i + 1, filePath, routerPrefixes);
       if (parsed) {
         endpoints.push(parsed);
+        continue;
+      }
+
+      // Try app.route('/path').get().post() chaining pattern
+      const routeChain = this.parseRouteChain(line, lines, i, filePath, routerPrefixes);
+      if (routeChain.length > 0) {
+        endpoints.push(...routeChain);
       }
     }
 
@@ -78,6 +89,70 @@ export class ExpressAdapter implements Adapter {
     };
   }
 
+  /**
+   * Parse app.route('/path').get(handler).post(handler) chaining pattern.
+   * This can span a single line or multiple lines.
+   */
+  private parseRouteChain(
+    line: string,
+    allLines: string[],
+    lineIndex: number,
+    filePath?: string,
+    routerPrefixes?: Map<string, string>,
+  ): Endpoint[] {
+    // Match: identifier.route('/path')
+    const routeMatch = line.match(/(\w+)\.route\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/);
+    if (!routeMatch) return [];
+
+    const [, identifier, path] = routeMatch;
+    const endpoints: Endpoint[] = [];
+
+    // Determine full path
+    let fullPath = path;
+    if (routerPrefixes && identifier && routerPrefixes.has(identifier)) {
+      const prefix = routerPrefixes.get(identifier)!;
+      fullPath = prefix + path;
+    }
+    if (!fullPath.startsWith("/")) {
+      fullPath = "/" + fullPath;
+    }
+
+    const params = this.extractParams(fullPath);
+
+    // Collect lines that are part of this chain (current line + continuation lines)
+    let chainText = line;
+    for (let j = lineIndex + 1; j < Math.min(lineIndex + 10, allLines.length); j++) {
+      const nextLine = allLines[j].trim();
+      // If line starts with .method( it's a continuation
+      if (nextLine.match(/^\.(get|post|put|delete|patch|head|options)\s*\(/i)) {
+        chainText += " " + nextLine;
+      } else if (chainText.includes(".route(") && nextLine.startsWith(".")) {
+        chainText += " " + nextLine;
+      } else {
+        break;
+      }
+    }
+
+    // Extract all .method() calls from the chain
+    const methodCallPattern = new RegExp(
+      `\\.(${HTTP_METHODS.join("|")})\\s*\\(`,
+      "gi",
+    );
+    let methodMatch: RegExpExecArray | null;
+    while ((methodMatch = methodCallPattern.exec(chainText)) !== null) {
+      endpoints.push({
+        method: methodMatch[1].toUpperCase() as HttpMethod,
+        path: fullPath,
+        handler: "<chained>",
+        params: [...params],
+        file: filePath,
+        line: lineIndex + 1,
+      });
+    }
+
+    return endpoints;
+  }
+
   private extractHandler(line: string): string {
     // Try to find the last named function/identifier before the closing paren
     // Pattern: ..., handlerName) or ..., handlerName);
@@ -110,13 +185,15 @@ export class ExpressAdapter implements Adapter {
   }
 
   /**
-   * Detect router prefix mappings from app.use('/prefix', routerName)
+   * Detect router prefix mappings from:
+   *   app.use('/prefix', routerName)
+   *   router.use('/prefix', subRouter)
    */
   private detectRouterPrefixes(source: string): Map<string, string> {
     const prefixes = new Map<string, string>();
 
-    // Match: app.use('/prefix', routerIdentifier)
-    const usePattern = /app\.use\s*\(\s*['"`]([^'"`]+)['"`]\s*,\s*(\w+)\s*\)/g;
+    // Match: app.use('/prefix', routerIdentifier) or router.use('/prefix', routerIdentifier)
+    const usePattern = /\w+\.use\s*\(\s*['"`]([^'"`]+)['"`]\s*,\s*(\w+)\s*\)/g;
     let match: RegExpExecArray | null;
 
     while ((match = usePattern.exec(source)) !== null) {

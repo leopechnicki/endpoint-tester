@@ -8,8 +8,9 @@ import { Framework } from "../types.js";
  *   @GetMapping("/path")
  *   @PostMapping("/path")
  *   @RequestMapping(value = "/path", method = RequestMethod.GET)
+ *   @RequestMapping(method = RequestMethod.POST, value = "/path")
  *   @PathVariable annotations
- *   Class-level @RequestMapping("/prefix")
+ *   Class-level @RequestMapping("/prefix") — including multiline annotations
  */
 export class SpringAdapter implements Adapter {
   readonly framework = Framework.Spring;
@@ -43,6 +44,7 @@ export class SpringAdapter implements Adapter {
     const trimmed = line.trim();
 
     // Try specific mapping annotations first: @GetMapping, @PostMapping, etc.
+    // Handle both @GetMapping("/path") and @GetMapping(value = "/path")
     const specificMatch = trimmed.match(
       /@(Get|Post|Put|Delete|Patch)Mapping\s*\(\s*(?:value\s*=\s*)?['"]([^'"]*)['"]/,
     );
@@ -63,7 +65,7 @@ export class SpringAdapter implements Adapter {
       }];
     }
 
-    // Also match no-arg form: @GetMapping or @GetMapping("/path") without value=
+    // Also match no-arg form: @GetMapping or @GetMapping() without path
     const simpleSpecificMatch = trimmed.match(
       /@(Get|Post|Put|Delete|Patch)Mapping\s*(?:\(\s*\))?\s*$/,
     );
@@ -83,26 +85,75 @@ export class SpringAdapter implements Adapter {
       }];
     }
 
-    // Try @RequestMapping with method
-    const requestMappingMatch = trimmed.match(
-      /@RequestMapping\s*\(\s*(?:value\s*=\s*)?['"]([^'"]*)['"]\s*,\s*method\s*=\s*RequestMethod\.(\w+)/,
-    );
-    if (requestMappingMatch) {
-      const [, path, method] = requestMappingMatch;
-      const fullPath = this.normalizePath(classPrefix + path);
-      const handler = this.extractHandler(allLines, lineIndex);
-      const params = this.extractParams(fullPath);
+    // Try @RequestMapping — handle multiple argument orderings and multiline
+    if (trimmed.match(/@RequestMapping\s*\(/)) {
+      // Check if this is a class-level annotation (skip it)
+      const afterAnnotation = allLines.slice(lineIndex + 1, lineIndex + 5).join(" ");
+      if (afterAnnotation.match(/(?:public\s+)?(?:abstract\s+)?class\s+/)) {
+        return null;
+      }
 
-      return [{
-        method: method.toUpperCase() as HttpMethod,
-        path: fullPath.replace(/\{(\w+)\}/g, ":$1"),
-        handler,
-        params,
-        file: filePath,
-        line: lineIndex + 1,
-      }];
+      // Collect full annotation text (may span multiple lines)
+      let annotationText = trimmed;
+      let openParens = 0;
+      for (const c of annotationText) {
+        if (c === "(") openParens++;
+        if (c === ")") openParens--;
+      }
+      let j = lineIndex + 1;
+      while (openParens > 0 && j < Math.min(lineIndex + 10, allLines.length)) {
+        annotationText += " " + allLines[j].trim();
+        for (const c of allLines[j]) {
+          if (c === "(") openParens++;
+          if (c === ")") openParens--;
+        }
+        j++;
+      }
+
+      // Extract path and method from the full annotation
+      const path = this.extractAnnotationPath(annotationText);
+      const method = this.extractAnnotationMethod(annotationText);
+
+      if (method) {
+        const fullPath = this.normalizePath(classPrefix + path);
+        const handler = this.extractHandler(allLines, lineIndex);
+        const params = this.extractParams(fullPath);
+
+        return [{
+          method,
+          path: fullPath.replace(/\{(\w+)\}/g, ":$1"),
+          handler,
+          params,
+          file: filePath,
+          line: lineIndex + 1,
+        }];
+      }
     }
 
+    return null;
+  }
+
+  /**
+   * Extract the path from a @RequestMapping annotation text.
+   */
+  private extractAnnotationPath(text: string): string {
+    // Try value = "/path"
+    const valueMatch = text.match(/value\s*=\s*['"]([^'"]*)['"]/);
+    if (valueMatch) return valueMatch[1];
+
+    // Try first string argument: @RequestMapping("/path", ...)
+    const directMatch = text.match(/@RequestMapping\s*\(\s*['"]([^'"]*)['"]/);
+    if (directMatch) return directMatch[1];
+
+    return "";
+  }
+
+  /**
+   * Extract the HTTP method from a @RequestMapping annotation text.
+   */
+  private extractAnnotationMethod(text: string): HttpMethod | null {
+    const methodMatch = text.match(/method\s*=\s*RequestMethod\.(\w+)/);
+    if (methodMatch) return methodMatch[1].toUpperCase() as HttpMethod;
     return null;
   }
 
@@ -137,13 +188,37 @@ export class SpringAdapter implements Adapter {
   }
 
   private detectClassPrefix(source: string): string {
-    // Match class-level @RequestMapping("/prefix")
-    // Must appear before any class method definitions
-    const classAnnotation = source.match(
-      /@RequestMapping\s*\(\s*(?:value\s*=\s*)?['"]([^'"]+)['"]\s*\)\s+(?:public\s+)?class/,
-    );
-    if (classAnnotation) return classAnnotation[1];
+    const lines = source.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const trimmed = lines[i].trim();
+      if (trimmed.match(/@RequestMapping\s*\(/)) {
+        // Check if the next few lines contain a class declaration
+        const nextLines = lines.slice(i + 1, i + 5).join(" ");
+        if (nextLines.match(/(?:public\s+)?(?:abstract\s+)?class\s+/)) {
+          // Collect full annotation if multiline
+          let annotationText = trimmed;
+          let openParens = 0;
+          for (const c of annotationText) {
+            if (c === "(") openParens++;
+            if (c === ")") openParens--;
+          }
+          let j = i + 1;
+          while (openParens > 0 && j < Math.min(i + 5, lines.length)) {
+            annotationText += " " + lines[j].trim();
+            for (const c of lines[j]) {
+              if (c === "(") openParens++;
+              if (c === ")") openParens--;
+            }
+            j++;
+          }
 
+          const pathMatch = annotationText.match(
+            /@RequestMapping\s*\(\s*(?:value\s*=\s*)?['"]([^'"]+)['"]/,
+          );
+          if (pathMatch) return pathMatch[1];
+        }
+      }
+    }
     return "";
   }
 
