@@ -70,10 +70,11 @@ export class DjangoAdapter implements Adapter {
     const params = this.extractParams(route);
 
     // Replace Django param syntax with :param
+    // Named groups (?P<name>...) must be replaced first, before <name> patterns
     normalizedPath = normalizedPath
+      .replace(/\(\?P<(\w+)>[^)]*\)/g, ":$1")
       .replace(/<\w+:(\w+)>/g, ":$1")
-      .replace(/<(\w+)>/g, ":$1")
-      .replace(/\(\?P<(\w+)>[^)]*\)/g, ":$1");
+      .replace(/<(\w+)>/g, ":$1");
 
     // Extract handler short name
     const handlerName = handler.includes(".")

@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
 import { glob } from "glob";
 import type { Adapter, Endpoint, ScanOptions } from "./types.js";
-import { getAdapter } from "./adapters/index.js";
 
 export class Scanner {
   private adapter: Adapter;

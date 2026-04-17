@@ -131,9 +131,142 @@ describe("detectFramework", () => {
     });
   });
 
-  it("should return null for empty directory", async () => {
-    mkdirSync(TEST_DIR, { recursive: true });
-    const result = await detectFramework(TEST_DIR);
-    expect(result).toBeNull();
+  describe("setup.py detection", () => {
+    it("should detect FastAPI from setup.py", async () => {
+      setupDir({
+        "setup.py": 'install_requires=["fastapi>=0.100", "uvicorn"]',
+      });
+      const result = await detectFramework(TEST_DIR);
+      expect(result).not.toBeNull();
+      expect(result!.framework).toBe("fastapi");
+      expect(result!.confidence).toBe("high");
+      expect(result!.reason).toContain("setup.py");
+    });
+
+    it("should detect Flask from setup.py", async () => {
+      setupDir({
+        "setup.py": 'install_requires=["flask>=2.0", "gunicorn"]',
+      });
+      const result = await detectFramework(TEST_DIR);
+      expect(result!.framework).toBe("flask");
+    });
+
+    it("should detect Django from setup.py", async () => {
+      setupDir({
+        "setup.py": 'install_requires=["django>=4.0"]',
+      });
+      const result = await detectFramework(TEST_DIR);
+      expect(result!.framework).toBe("django");
+    });
+  });
+
+  describe("pyproject.toml Flask/Django detection", () => {
+    it("should detect Flask from pyproject.toml", async () => {
+      setupDir({
+        "pyproject.toml": '[project]\ndependencies = ["flask>=2.0"]\n',
+      });
+      const result = await detectFramework(TEST_DIR);
+      expect(result!.framework).toBe("flask");
+      expect(result!.confidence).toBe("high");
+      expect(result!.reason).toContain("pyproject.toml");
+    });
+
+    it("should detect Django from pyproject.toml", async () => {
+      setupDir({
+        "pyproject.toml": '[project]\ndependencies = ["django>=4.2"]\n',
+      });
+      const result = await detectFramework(TEST_DIR);
+      expect(result!.framework).toBe("django");
+      expect(result!.confidence).toBe("high");
+    });
+  });
+
+  describe("conflict resolution (priority order)", () => {
+    it("should prefer package.json over requirements.txt", async () => {
+      setupDir({
+        "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
+        "requirements.txt": "fastapi==0.100.0\n",
+      });
+      const result = await detectFramework(TEST_DIR);
+      expect(result!.framework).toBe("express");
+    });
+
+    it("should prefer requirements.txt over file pattern scanning", async () => {
+      setupDir({
+        "requirements.txt": "flask>=2.0\n",
+        "app/main.py": "from fastapi import FastAPI\napp = FastAPI()\n",
+      });
+      const result = await detectFramework(TEST_DIR);
+      expect(result!.framework).toBe("flask");
+    });
+
+    it("should prefer requirements.txt over pyproject.toml (checked first)", async () => {
+      setupDir({
+        "requirements.txt": "fastapi==0.100.0\n",
+        "pyproject.toml": '[project]\ndependencies = ["django>=4.2"]\n',
+      });
+      const result = await detectFramework(TEST_DIR);
+      expect(result!.framework).toBe("fastapi");
+    });
+  });
+
+  describe("null fallback", () => {
+    it("should return null for empty directory", async () => {
+      mkdirSync(TEST_DIR, { recursive: true });
+      const result = await detectFramework(TEST_DIR);
+      expect(result).toBeNull();
+    });
+
+    it("should return null for directory with unrelated files", async () => {
+      setupDir({
+        "README.md": "# Hello",
+        "data.csv": "a,b,c\n1,2,3\n",
+      });
+      const result = await detectFramework(TEST_DIR);
+      expect(result).toBeNull();
+    });
+
+    it("should return null for package.json without framework deps", async () => {
+      setupDir({
+        "package.json": JSON.stringify({ dependencies: { lodash: "^4.0.0" } }),
+      });
+      const result = await detectFramework(TEST_DIR);
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("malformed file handling", () => {
+    it("should handle malformed package.json gracefully", async () => {
+      setupDir({
+        "package.json": "{ this is not valid json !!!",
+      });
+      const result = await detectFramework(TEST_DIR);
+      // Should not throw, should return null (or fall through to other strategies)
+      expect(result).toBeNull();
+    });
+
+    it("should handle empty package.json", async () => {
+      setupDir({
+        "package.json": "{}",
+      });
+      const result = await detectFramework(TEST_DIR);
+      expect(result).toBeNull();
+    });
+
+    it("should handle empty requirements.txt", async () => {
+      setupDir({
+        "requirements.txt": "",
+      });
+      const result = await detectFramework(TEST_DIR);
+      expect(result).toBeNull();
+    });
+
+    it("should handle binary-like content in requirements.txt gracefully", async () => {
+      setupDir({
+        "requirements.txt": "\x00\x01\x02\x03",
+      });
+      const result = await detectFramework(TEST_DIR);
+      expect(result).toBeNull();
+    });
   });
 });

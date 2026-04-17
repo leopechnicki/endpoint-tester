@@ -30,8 +30,8 @@ export class ExpressAdapter implements Adapter {
 
       // Try standard method pattern first
       const parsed = this.parseLine(line, i + 1, filePath, routerPrefixes);
-      if (parsed) {
-        endpoints.push(parsed);
+      if (parsed.length > 0) {
+        endpoints.push(...parsed);
         continue;
       }
 
@@ -50,43 +50,46 @@ export class ExpressAdapter implements Adapter {
     lineNumber: number,
     filePath?: string,
     routerPrefixes?: Map<string, string>,
-  ): Endpoint | null {
-    // Match: identifier.method('/path', ...)
+  ): Endpoint[] {
+    // Match: identifier.method('/path', ...) — global flag to catch multiple routes per line
     const methodPattern = new RegExp(
       `(\\w+)\\.(${HTTP_METHODS.join("|")})\\s*\\(\\s*['"\`]([^'"\`]+)['"\`]`,
-      "i",
+      "gi",
     );
-    const match = line.match(methodPattern);
-    if (!match) return null;
 
-    const [, identifier, method, path] = match;
+    const results: Endpoint[] = [];
+    for (const match of line.matchAll(methodPattern)) {
+      const [, identifier, method, path] = match;
 
-    // Determine the full path including any router prefix
-    let fullPath = path;
-    if (routerPrefixes && identifier && routerPrefixes.has(identifier)) {
-      const prefix = routerPrefixes.get(identifier)!;
-      fullPath = prefix + path;
+      // Determine the full path including any router prefix
+      let fullPath = path;
+      if (routerPrefixes && identifier && routerPrefixes.has(identifier)) {
+        const prefix = routerPrefixes.get(identifier)!;
+        fullPath = prefix + path;
+      }
+
+      // Normalize path: ensure leading slash
+      if (!fullPath.startsWith("/")) {
+        fullPath = "/" + fullPath;
+      }
+
+      // Extract handler name (last function argument)
+      const handler = this.extractHandler(line);
+
+      // Extract route parameters from path (e.g. :id)
+      const params = this.extractParams(fullPath);
+
+      results.push({
+        method: method.toUpperCase() as HttpMethod,
+        path: fullPath,
+        handler,
+        params,
+        file: filePath,
+        line: lineNumber,
+      });
     }
 
-    // Normalize path: ensure leading slash
-    if (!fullPath.startsWith("/")) {
-      fullPath = "/" + fullPath;
-    }
-
-    // Extract handler name (last function argument)
-    const handler = this.extractHandler(line);
-
-    // Extract route parameters from path (e.g. :id)
-    const params = this.extractParams(fullPath);
-
-    return {
-      method: method.toUpperCase() as HttpMethod,
-      path: fullPath,
-      handler,
-      params,
-      file: filePath,
-      line: lineNumber,
-    };
+    return results;
   }
 
   /**
