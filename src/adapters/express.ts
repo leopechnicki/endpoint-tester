@@ -1,7 +1,7 @@
 import type { Adapter, Endpoint, EndpointParam, HttpMethod } from "../types.js";
 import { Framework } from "../types.js";
 
-const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"] as const;
+const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options", "all"] as const;
 
 /**
  * Parses Express.js route definitions from source code.
@@ -30,8 +30,15 @@ export class ExpressAdapter implements Adapter {
 
       // Try standard method pattern first
       const parsed = this.parseLine(line, i + 1, filePath, routerPrefixes);
-      if (parsed.length > 0) {
+      if (parsed) {
         endpoints.push(...parsed);
+        continue;
+      }
+
+      // Try regex route pattern: app.get(/^\/files\//, handler)
+      const regexParsed = this.parseRegexRoute(line, i + 1, filePath, routerPrefixes);
+      if (regexParsed) {
+        endpoints.push(...regexParsed);
         continue;
       }
 
@@ -50,46 +57,56 @@ export class ExpressAdapter implements Adapter {
     lineNumber: number,
     filePath?: string,
     routerPrefixes?: Map<string, string>,
-  ): Endpoint[] {
-    // Match: identifier.method('/path', ...) — global flag to catch multiple routes per line
+  ): Endpoint[] | null {
+    // Match: identifier.method('/path', ...)
     const methodPattern = new RegExp(
       `(\\w+)\\.(${HTTP_METHODS.join("|")})\\s*\\(\\s*['"\`]([^'"\`]+)['"\`]`,
-      "gi",
+      "i",
     );
+    const match = line.match(methodPattern);
+    if (!match) return null;
 
-    const results: Endpoint[] = [];
-    for (const match of line.matchAll(methodPattern)) {
-      const [, identifier, method, path] = match;
+    const [, identifier, method, path] = match;
 
-      // Determine the full path including any router prefix
-      let fullPath = path;
-      if (routerPrefixes && identifier && routerPrefixes.has(identifier)) {
-        const prefix = routerPrefixes.get(identifier)!;
-        fullPath = prefix + path;
-      }
-
-      // Normalize path: ensure leading slash
-      if (!fullPath.startsWith("/")) {
-        fullPath = "/" + fullPath;
-      }
-
-      // Extract handler name (last function argument)
-      const handler = this.extractHandler(line);
-
-      // Extract route parameters from path (e.g. :id)
-      const params = this.extractParams(fullPath);
-
-      results.push({
-        method: method.toUpperCase() as HttpMethod,
-        path: fullPath,
-        handler,
-        params,
-        file: filePath,
-        line: lineNumber,
-      });
+    // Determine the full path including any router prefix
+    let fullPath = path;
+    if (routerPrefixes && identifier && routerPrefixes.has(identifier)) {
+      const prefix = routerPrefixes.get(identifier)!;
+      fullPath = prefix + path;
     }
 
-    return results;
+    // Normalize path: ensure leading slash
+    if (!fullPath.startsWith("/")) {
+      fullPath = "/" + fullPath;
+    }
+
+    // Extract handler name (last function argument)
+    const handler = this.extractHandler(line);
+
+    // Extract route parameters from path (e.g. :id)
+    const params = this.extractParams(fullPath);
+
+    // app.all() maps to all standard HTTP methods
+    if (method.toLowerCase() === "all") {
+      const allMethods: HttpMethod[] = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"];
+      return allMethods.map((m) => ({
+        method: m,
+        path: fullPath,
+        handler,
+        params: [...params],
+        file: filePath,
+        line: lineNumber,
+      }));
+    }
+
+    return [{
+      method: method.toUpperCase() as HttpMethod,
+      path: fullPath,
+      handler,
+      params,
+      file: filePath,
+      line: lineNumber,
+    }];
   }
 
   /**
@@ -127,7 +144,7 @@ export class ExpressAdapter implements Adapter {
     for (let j = lineIndex + 1; j < Math.min(lineIndex + 10, allLines.length); j++) {
       const nextLine = allLines[j].trim();
       // If line starts with .method( it's a continuation
-      if (nextLine.match(/^\.(get|post|put|delete|patch|head|options)\s*\(/i)) {
+      if (nextLine.match(/^\.(get|post|put|delete|patch|head|options|all)\s*\(/i)) {
         chainText += " " + nextLine;
       } else if (chainText.includes(".route(") && nextLine.startsWith(".")) {
         chainText += " " + nextLine;
@@ -143,17 +160,91 @@ export class ExpressAdapter implements Adapter {
     );
     let methodMatch: RegExpExecArray | null;
     while ((methodMatch = methodCallPattern.exec(chainText)) !== null) {
-      endpoints.push({
-        method: methodMatch[1].toUpperCase() as HttpMethod,
-        path: fullPath,
-        handler: "<chained>",
-        params: [...params],
-        file: filePath,
-        line: lineIndex + 1,
-      });
+      const chainedMethod = methodMatch[1].toLowerCase();
+      if (chainedMethod === "all") {
+        const allMethods: HttpMethod[] = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"];
+        for (const m of allMethods) {
+          endpoints.push({
+            method: m,
+            path: fullPath,
+            handler: "<chained>",
+            params: [...params],
+            file: filePath,
+            line: lineIndex + 1,
+          });
+        }
+      } else {
+        endpoints.push({
+          method: chainedMethod.toUpperCase() as HttpMethod,
+          path: fullPath,
+          handler: "<chained>",
+          params: [...params],
+          file: filePath,
+          line: lineIndex + 1,
+        });
+      }
     }
 
     return endpoints;
+  }
+
+  /**
+   * Parse regex route patterns: app.get(/^\/files\//, handler)
+   */
+  private parseRegexRoute(
+    line: string,
+    lineNumber: number,
+    filePath?: string,
+    routerPrefixes?: Map<string, string>,
+  ): Endpoint[] | null {
+    // Match: identifier.method(/regex/, handler)
+    // The regex literal sits between ( / ... / , ) — we capture the content between slashes
+    const methodsGroup = HTTP_METHODS.join("|");
+    const regexMatch = line.match(
+      new RegExp(`(\\w+)\\.(${methodsGroup})\\s*\\(\\s*\\/(.+)\\/\\s*,`, "i"),
+    );
+    if (!regexMatch) return null;
+
+    const [, identifier, method, regexContent] = regexMatch;
+
+    // Convert regex to a readable path approximation
+    let path = regexContent
+      .replace(/\\\//g, "/")     // unescape slashes (\/ → /)
+      .replace(/^\^/, "")        // remove start anchor
+      .replace(/\$$/, "");       // remove end anchor
+
+    // Ensure leading slash
+    if (!path.startsWith("/")) path = "/" + path;
+
+    let fullPath = path;
+    if (routerPrefixes && identifier && routerPrefixes.has(identifier)) {
+      const prefix = routerPrefixes.get(identifier)!;
+      fullPath = prefix + path;
+    }
+
+    const handler = this.extractHandler(line);
+    const params = this.extractParams(fullPath);
+
+    if (method.toLowerCase() === "all") {
+      const allMethods: HttpMethod[] = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"];
+      return allMethods.map((m) => ({
+        method: m,
+        path: fullPath,
+        handler,
+        params: [...params],
+        file: filePath,
+        line: lineNumber,
+      }));
+    }
+
+    return [{
+      method: method.toUpperCase() as HttpMethod,
+      path: fullPath,
+      handler,
+      params: [...params],
+      file: filePath,
+      line: lineNumber,
+    }];
   }
 
   private extractHandler(line: string): string {

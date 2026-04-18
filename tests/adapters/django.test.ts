@@ -96,4 +96,70 @@ def hello():
     const endpoints = adapter.parse(source);
     expect(endpoints).toHaveLength(0);
   });
+
+  describe("HTTP method inference", () => {
+    it("should infer methods from class-based views", () => {
+      const source = `
+class UserView(APIView):
+    def get(self, request):
+        return Response([])
+
+    def post(self, request):
+        return Response({})
+
+urlpatterns = [
+    path('users/', UserView.as_view()),
+]
+`;
+      const endpoints = adapter.parse(source);
+
+      expect(endpoints).toHaveLength(2);
+      expect(endpoints.map(e => e.method)).toEqual(["GET", "POST"]);
+    });
+
+    it("should infer methods from @api_view decorator", () => {
+      const source = `
+@api_view(['GET', 'POST'])
+def user_list(request):
+    pass
+
+urlpatterns = [
+    path('users/', user_list),
+]
+`;
+      const endpoints = adapter.parse(source);
+
+      expect(endpoints).toHaveLength(2);
+      expect(endpoints[0].method).toBe("GET");
+      expect(endpoints[1].method).toBe("POST");
+    });
+
+    it("should infer methods from @require_http_methods decorator", () => {
+      const source = `
+@require_http_methods(["GET", "PUT", "DELETE"])
+def item_detail(request, pk):
+    pass
+
+urlpatterns = [
+    path('items/<int:pk>/', item_detail),
+]
+`;
+      const endpoints = adapter.parse(source);
+
+      expect(endpoints).toHaveLength(3);
+      expect(endpoints.map(e => e.method)).toEqual(["GET", "PUT", "DELETE"]);
+    });
+
+    it("should default to GET when no view class info available", () => {
+      const source = `
+urlpatterns = [
+    path('health/', views.health_check),
+]
+`;
+      const endpoints = adapter.parse(source);
+
+      expect(endpoints).toHaveLength(1);
+      expect(endpoints[0].method).toBe("GET");
+    });
+  });
 });
