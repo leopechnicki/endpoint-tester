@@ -11,11 +11,14 @@
     "build": "tsc",
     "test": "vitest run",
     "lint": "eslint src/",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "prepare": "npm run build",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\""
   },
   "dependencies": {
-    "commander": "^12.1.0",
-    "glob": "^11.0.0"
+    "commander": "^14.0.0",
+    "glob": "^13.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
