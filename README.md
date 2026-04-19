@@ -190,6 +190,58 @@ registerAdapter(new HonoAdapter());
 | **Multi-framework** | 5 built-in | N/A | Framework-agnostic |
 | **CI friendly** | CLI output | Already in repo | Needs Newman |
 
+## Development
+
+### Prerequisites
+
+- Node.js >= 20
+- npm
+
+### Setup
+
+```bash
+git clone https://github.com/leopechnicki/endpoint-tester.git
+cd endpoint-tester
+npm install
+```
+
+### Commands
+
+```bash
+npm run build    # Compile TypeScript to dist/
+npm test         # Run tests with vitest
+npm run lint     # Lint with ESLint
+npm run dev      # Watch mode (tsc --watch)
+```
+
+### Library usage (programmatic API)
+
+Install as a dependency:
+
+```bash
+npm install endpoint-tester
+```
+
+Import types and classes:
+
+```typescript
+import {
+  Scanner,
+  TestGenerator,
+  getAdapter,
+  registerAdapter,
+  detectFramework,
+  Framework,
+  type Adapter,
+  type Endpoint,
+  type EndpointParam,
+  type EndpointBody,
+  type HttpMethod,
+  type ScanOptions,
+  type GenerateOptions,
+} from "endpoint-tester";
+```
+
 ## Contributing
 
 Contributions are welcome. Areas with the most impact:
@@ -198,13 +250,6 @@ Contributions are welcome. Areas with the most impact:
 - Smarter body inference from type annotations
 - OpenAPI/Swagger output format
 - Watch mode for continuous test generation
-
-```bash
-git clone https://github.com/leopechnicki/endpoint-tester.git
-cd endpoint-tester
-npm install
-npm test
-```
 
 ## License
 

@@ -201,7 +201,7 @@ export class ExpressAdapter implements Adapter {
     // The regex literal sits between ( / ... / , ) — we capture the content between slashes
     const methodsGroup = HTTP_METHODS.join("|");
     const regexMatch = line.match(
-      new RegExp(`(\\w+)\\.(${methodsGroup})\\s*\\(\\s*\\/(.+)\\/\\s*,`, "i"),
+      new RegExp(`(\\w+)\\.(${methodsGroup})\\s*\\(\\s*\\/([^\\/]*(?:\\\\\\/[^\\/]*)*)\\/\\s*,`, "i"),
     );
     if (!regexMatch) return null;
 
