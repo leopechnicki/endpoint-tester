@@ -110,4 +110,36 @@ publicRouter.get('/health', healthCheck);
       expect(endpoints[2].path).toBe("/public/health");
     });
   });
+
+  describe("app.all() wildcard", () => {
+    it("should expand app.all() to all HTTP methods", () => {
+      const source = `app.all('/api/*', corsHandler);`;
+      const endpoints = adapter.parse(source);
+
+      expect(endpoints).toHaveLength(7);
+      expect(endpoints.map(e => e.method)).toEqual([
+        "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"
+      ]);
+      expect(endpoints.every(e => e.path === "/api/*")).toBe(true);
+    });
+  });
+
+  describe("regex routes", () => {
+    it("should parse regex route patterns", () => {
+      const source = `app.get(/^\\/files\\//, serveFiles);`;
+      const endpoints = adapter.parse(source);
+
+      expect(endpoints).toHaveLength(1);
+      expect(endpoints[0].method).toBe("GET");
+      expect(endpoints[0].path).toContain("/files/");
+    });
+
+    it("should parse simple regex route", () => {
+      const source = `app.get(/\\/health/, healthCheck);`;
+      const endpoints = adapter.parse(source);
+
+      expect(endpoints).toHaveLength(1);
+      expect(endpoints[0].method).toBe("GET");
+    });
+  });
 });
