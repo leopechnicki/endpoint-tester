@@ -35,7 +35,7 @@ async function resolveFramework(directory: string, explicitFramework?: string): 
   }
 
   console.log("Could not auto-detect framework. Defaulting to express.");
-  console.log("Hint: use --framework to specify explicitly (express, fastapi, spring, django, flask)");
+  console.log("Hint: use --framework to specify explicitly (express, fastapi, spring, django, flask, fastify, koa, nestjs)");
   return Framework.Express;
 }
 
@@ -45,7 +45,7 @@ program
   .argument("<directory>", "Directory to scan")
   .option(
     "-f, --framework <framework>",
-    "Framework to scan for (express, fastapi, spring, django, flask)",
+    "Framework to scan for (express, fastapi, spring, django, flask, fastify, koa, nestjs)",
   )
   .option("-o, --output <file>", "Output file for results (JSON)")
   .action(async (directory: string, options: { framework?: string; output?: string }) => {
@@ -80,7 +80,7 @@ program
   .argument("<directory>", "Directory to scan for endpoints")
   .option(
     "-f, --framework <framework>",
-    "Framework to scan for (express, fastapi, spring, django, flask)",
+    "Framework to scan for (express, fastapi, spring, django, flask, fastify, koa, nestjs)",
   )
   .option(
     "-o, --output <path>",

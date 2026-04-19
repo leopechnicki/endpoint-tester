@@ -4,6 +4,9 @@ export enum Framework {
   Spring = "spring",
   Django = "django",
   Flask = "flask",
+  Fastify = "fastify",
+  Koa = "koa",
+  NestJS = "nestjs",
 }
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS";
@@ -23,6 +26,10 @@ export interface EndpointBody {
 export interface EndpointResponse {
   status?: number;
   type?: string;
+  /** Known response fields (inferred from source) */
+  fields?: Record<string, string>;
+  /** Whether response is an array */
+  isArray?: boolean;
 }
 
 export interface Endpoint {

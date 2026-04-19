@@ -50,6 +50,19 @@ function detectFromPackageJson(directory: string): DetectionResult | null {
 
     const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
 
+    // NestJS check first (it uses Express/Fastify under the hood)
+    if (allDeps["@nestjs/core"] || allDeps["@nestjs/common"]) {
+      return { framework: Framework.NestJS, confidence: "high", reason: "@nestjs/core found in package.json dependencies" };
+    }
+
+    if (allDeps["fastify"]) {
+      return { framework: Framework.Fastify, confidence: "high", reason: "fastify found in package.json dependencies" };
+    }
+
+    if (allDeps["koa"]) {
+      return { framework: Framework.Koa, confidence: "high", reason: "koa found in package.json dependencies" };
+    }
+
     if (allDeps["express"]) {
       return { framework: Framework.Express, confidence: "high", reason: "express found in package.json dependencies" };
     }
@@ -57,6 +70,10 @@ function detectFromPackageJson(directory: string): DetectionResult | null {
     // Check common Express-based frameworks that use Express routing
     if (allDeps["@types/express"]) {
       return { framework: Framework.Express, confidence: "high", reason: "@types/express found in package.json" };
+    }
+
+    if (allDeps["@types/koa"]) {
+      return { framework: Framework.Koa, confidence: "high", reason: "@types/koa found in package.json" };
     }
 
     return null;
@@ -151,11 +168,31 @@ function detectFromJavaBuild(directory: string): DetectionResult | null {
 async function detectFromFilePatterns(directory: string): Promise<DetectionResult | null> {
   const defaultExclude = ["node_modules/**", "dist/**", "build/**", ".git/**", "venv/**", "__pycache__/**"];
 
-  // Look for Express patterns in JS/TS files
+  // Look for JS/TS framework patterns
   const tsFiles = await glob("**/*.{ts,js,mjs}", { cwd: directory, ignore: defaultExclude, absolute: true });
   for (const file of tsFiles.slice(0, 20)) {
     try {
       const content = readFileSync(file, "utf-8");
+
+      // NestJS (check first — uses Express/Fastify internally)
+      if (content.includes("from '@nestjs/common'") || content.includes("from \"@nestjs/common\"") ||
+          content.includes("@Controller(") || content.includes("@Get(") || content.includes("@Post(")) {
+        return { framework: Framework.NestJS, confidence: "medium", reason: `NestJS decorators found in ${file}` };
+      }
+
+      // Fastify
+      if (content.includes("require('fastify')") || content.includes("require(\"fastify\")") ||
+          content.includes("from 'fastify'") || content.includes("from \"fastify\"")) {
+        return { framework: Framework.Fastify, confidence: "medium", reason: `Fastify import found in ${file}` };
+      }
+
+      // Koa
+      if (content.includes("require('koa')") || content.includes("require(\"koa\")") ||
+          content.includes("from 'koa'") || content.includes("from \"koa\"")) {
+        return { framework: Framework.Koa, confidence: "medium", reason: `Koa import found in ${file}` };
+      }
+
+      // Express
       if (content.includes("require('express')") || content.includes("require(\"express\")") ||
           content.includes("from 'express'") || content.includes("from \"express\"")) {
         return { framework: Framework.Express, confidence: "medium", reason: `Express import found in ${file}` };
