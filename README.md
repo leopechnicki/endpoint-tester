@@ -143,6 +143,7 @@ import { Scanner, TestGenerator, getAdapter, detectFramework } from "endpoint-te
 
 // Auto-detect the framework
 const detected = await detectFramework("./src");
+if (!detected) throw new Error("Could not detect framework");
 const adapter = getAdapter(detected.framework);
 
 // Scan for endpoints
