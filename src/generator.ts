@@ -304,7 +304,7 @@ export class TestGenerator {
   // --- Utility methods ---
 
   private hasBody(ep: Endpoint): boolean {
-    return !!ep.body && (ep.method === "POST" || ep.method === "PUT" || ep.method === "PATCH");
+    return ep.method === "POST" || ep.method === "PUT" || ep.method === "PATCH";
   }
 
   private buildSampleBody(ep: Endpoint): string {
@@ -346,8 +346,10 @@ export class TestGenerator {
 
   private sanitizePythonName(name: string): string {
     return name
+      .replace(/-/g, "neg")
       .replace(/[^a-zA-Z0-9_]/g, "_")
       .replace(/_+/g, "_")
-      .replace(/^_+|_+$/g, "");
+      .replace(/^_+|_+$/g, "")
+      .replace(/^(\d)/, "_$1");
   }
 }
