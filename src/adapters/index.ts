@@ -5,6 +5,9 @@ import { FastAPIAdapter } from "./fastapi.js";
 import { SpringAdapter } from "./spring.js";
 import { DjangoAdapter } from "./django.js";
 import { FlaskAdapter } from "./flask.js";
+import { FastifyAdapter } from "./fastify.js";
+import { KoaAdapter } from "./koa.js";
+import { NestJSAdapter } from "./nestjs.js";
 
 const adapterRegistry = new Map<Framework, Adapter>();
 
@@ -32,5 +35,8 @@ registerAdapter(new FastAPIAdapter());
 registerAdapter(new SpringAdapter());
 registerAdapter(new DjangoAdapter());
 registerAdapter(new FlaskAdapter());
+registerAdapter(new FastifyAdapter());
+registerAdapter(new KoaAdapter());
+registerAdapter(new NestJSAdapter());
 
-export { ExpressAdapter, FastAPIAdapter, SpringAdapter, DjangoAdapter, FlaskAdapter };
+export { ExpressAdapter, FastAPIAdapter, SpringAdapter, DjangoAdapter, FlaskAdapter, FastifyAdapter, KoaAdapter, NestJSAdapter };

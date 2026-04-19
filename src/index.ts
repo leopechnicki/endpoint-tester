@@ -7,6 +7,9 @@ export { FastAPIAdapter } from "./adapters/fastapi.js";
 export { SpringAdapter } from "./adapters/spring.js";
 export { FlaskAdapter } from "./adapters/flask.js";
 export { DjangoAdapter } from "./adapters/django.js";
+export { FastifyAdapter } from "./adapters/fastify.js";
+export { KoaAdapter } from "./adapters/koa.js";
+export { NestJSAdapter } from "./adapters/nestjs.js";
 export {
   Framework,
   type Adapter,
