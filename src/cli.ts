@@ -99,6 +99,13 @@ program
         baseUrl: string;
       },
     ) => {
+      try {
+        new URL(options.baseUrl);
+      } catch {
+        console.error(`Invalid --base-url: "${options.baseUrl}" is not a valid URL.`);
+        process.exit(1);
+      }
+
       const dir = resolve(directory);
       const framework = await resolveFramework(dir, options.framework);
       const adapter = getAdapter(framework);

@@ -42,7 +42,10 @@ function escapeForStringLiteral(value: string): string {
   return value
     .replace(/\\/g, "\\\\")
     .replace(/"/g, '\\"')
-    .replace(/`/g, "\\`");
+    .replace(/`/g, "\\`")
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/\t/g, "\\t");
 }
 
 export class TestGenerator {

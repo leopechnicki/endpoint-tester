@@ -160,3 +160,61 @@ describe("TestGenerator — Python identifier sanitization", () => {
     }
   });
 });
+
+describe("TestGenerator — control character escaping in baseUrl", () => {
+  it("should escape newlines in baseUrl so generated test file is syntactically valid", () => {
+    const endpoint: Endpoint = {
+      method: "GET",
+      path: "/health",
+      handler: "healthCheck",
+      params: [],
+    };
+
+    const output = generator.generate({
+      endpoints: [endpoint],
+      output: "./tests",
+      format: "vitest",
+      baseUrl: "http://localhost:3000\nmalicious",
+    });
+
+    expect(output).toContain("\\n");
+    expect(output).not.toMatch(/BASE_URL = "http:\/\/localhost:3000\nmalicious"/);
+  });
+
+  it("should escape carriage returns and tabs in baseUrl", () => {
+    const endpoint: Endpoint = {
+      method: "GET",
+      path: "/ping",
+      handler: "ping",
+      params: [],
+    };
+
+    const outputCR = generator.generate({
+      endpoints: [endpoint],
+      output: "./tests",
+      format: "vitest",
+      baseUrl: "http://localhost\r\n:3000",
+    });
+
+    expect(outputCR).toContain("\\r");
+    expect(outputCR).toContain("\\n");
+  });
+
+  it("should escape newlines in pytest BASE_URL assignment", () => {
+    const endpoint: Endpoint = {
+      method: "GET",
+      path: "/health",
+      handler: "healthCheck",
+      params: [],
+    };
+
+    const output = generator.generate({
+      endpoints: [endpoint],
+      output: "./tests",
+      format: "pytest",
+      baseUrl: "http://localhost:3000\ninjected",
+    });
+
+    expect(output).toContain("\\n");
+  });
+});
