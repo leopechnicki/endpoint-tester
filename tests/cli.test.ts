@@ -6,18 +6,22 @@ import { join, resolve } from "node:path";
 const CLI_PATH = resolve(__dirname, "../dist/cli.js");
 const TEST_DIR = join(process.cwd(), ".test-cli-tmp");
 
-function runCli(args: string[]): { stdout: string; exitCode: number } {
+function runCli(args: string[]): { stdout: string; stderr: string; exitCode: number } {
   try {
+    // execFileSync returns stdout; we capture stderr separately so assertions
+    // on console.error output (which goes to stderr) work correctly.
     const stdout = execFileSync("node", [CLI_PATH, ...args], {
       encoding: "utf-8",
       cwd: process.cwd(),
       timeout: 15000,
+      stdio: ["pipe", "pipe", "pipe"],
     });
-    return { stdout, exitCode: 0 };
+    return { stdout, stderr: "", exitCode: 0 };
   } catch (err: unknown) {
     const execErr = err as { stdout?: string; stderr?: string; status?: number };
     return {
-      stdout: (execErr.stdout ?? "") + (execErr.stderr ?? ""),
+      stdout: execErr.stdout ?? "",
+      stderr: execErr.stderr ?? "",
       exitCode: execErr.status ?? 1,
     };
   }
@@ -183,10 +187,14 @@ app.post('/users', createUser);
         "app.ts": `app.get('/users', getUsers);`,
       });
 
-      const { stdout, exitCode } = runCli(["generate", TEST_DIR, "--format", "mocha"]);
+      // console.error() writes to stderr — verify the helper captures it correctly
+      const { stdout, stderr, exitCode } = runCli(["generate", TEST_DIR, "--format", "mocha"]);
       expect(exitCode).toBe(1);
-      expect(stdout).toContain("Invalid --format");
-      expect(stdout).toContain("mocha");
+      // The error message goes to stderr (console.error); verify it is captured there
+      expect(stderr).toContain("Invalid --format");
+      expect(stderr).toContain("mocha");
+      // stdout should be empty (no successful output before the early exit)
+      expect(stdout.trim()).toBe("");
     });
   });
 });

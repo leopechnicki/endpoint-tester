@@ -48,6 +48,13 @@ function escapeForStringLiteral(value: string): string {
     .replace(/\t/g, "\\t");
 }
 
+/**
+ * The set of test formats this generator supports.
+ * Import this in the CLI to keep format validation in sync.
+ */
+export const SUPPORTED_FORMATS = ["vitest", "jest", "pytest"] as const;
+export type SupportedFormat = (typeof SUPPORTED_FORMATS)[number];
+
 export class TestGenerator {
   /**
    * Generate test file content for the given endpoints.

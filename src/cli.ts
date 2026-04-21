@@ -4,7 +4,7 @@ import { Command } from "commander";
 import { resolve, dirname, extname } from "node:path";
 import { writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import { Scanner } from "./scanner.js";
-import { TestGenerator } from "./generator.js";
+import { TestGenerator, SUPPORTED_FORMATS } from "./generator.js";
 import { getAdapter } from "./adapters/index.js";
 import { Framework } from "./types.js";
 import { detectFramework } from "./detect.js";
@@ -108,7 +108,7 @@ program
         process.exit(1);
       }
 
-      const validFormats = ["vitest", "jest", "pytest"];
+      const validFormats: readonly string[] = SUPPORTED_FORMATS;
       if (!validFormats.includes(options.format)) {
         console.error(
           `Invalid --format: "${options.format}". Must be one of: ${validFormats.join(", ")}.`,
