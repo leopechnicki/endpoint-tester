@@ -162,5 +162,17 @@ app.post('/users', createUser);
       expect(exitCode).toBe(0);
       expect(stdout).toContain("No endpoints found");
     });
+
+    it("should reject an unsupported --format value", () => {
+      setupProject({
+        "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
+        "app.ts": `app.get('/users', getUsers);`,
+      });
+
+      const { stdout, exitCode } = runCli(["generate", TEST_DIR, "--format", "mocha"]);
+      expect(exitCode).toBe(1);
+      expect(stdout).toContain("Invalid --format");
+      expect(stdout).toContain("mocha");
+    });
   });
 });
