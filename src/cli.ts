@@ -108,6 +108,14 @@ program
         process.exit(1);
       }
 
+      const validFormats = ["vitest", "jest", "pytest"];
+      if (!validFormats.includes(options.format)) {
+        console.error(
+          `Invalid --format: "${options.format}". Must be one of: ${validFormats.join(", ")}.`,
+        );
+        process.exit(1);
+      }
+
       const dir = resolve(directory);
       const framework = await resolveFramework(dir, options.framework);
       const adapter = getAdapter(framework);
