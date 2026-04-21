@@ -69,8 +69,10 @@ program
     }
 
     if (options.output) {
-      writeFileSync(options.output, JSON.stringify(endpoints, null, 2));
-      console.log(`\nResults written to ${options.output}`);
+      const outPath = resolve(options.output);
+      mkdirSync(dirname(outPath), { recursive: true });
+      writeFileSync(outPath, JSON.stringify(endpoints, null, 2));
+      console.log(`\nResults written to ${outPath}`);
     }
   });
 
