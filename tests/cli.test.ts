@@ -127,6 +127,20 @@ def health():
       expect(output[0].path).toBe("/test");
     });
 
+    it("should create parent directory for a nested --output path", () => {
+      setupProject({
+        "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
+        "routes.ts": `app.get('/test', handler);`,
+      });
+
+      const outputFile = join(TEST_DIR, "reports", "nested", "scan.json");
+      const { exitCode } = runCli(["scan", TEST_DIR, "--output", outputFile]);
+      expect(exitCode).toBe(0);
+
+      const output = JSON.parse(readFileSync(outputFile, "utf-8"));
+      expect(Array.isArray(output)).toBe(true);
+    });
+
     it("should report 0 endpoints for empty project", () => {
       setupProject({
         "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
