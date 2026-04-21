@@ -1,4 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
+import { mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { join } from "node:path";
 import { Scanner } from "../src/scanner.js";
 import type { Adapter, Endpoint } from "../src/types.js";
 import { Framework } from "../src/types.js";
@@ -55,5 +57,58 @@ describe("Scanner", () => {
 
     scanner.setAdapter(adapter2);
     expect(scanner.parseSource("code")[0].path).toBe("/b");
+  });
+
+  describe("scan() deduplication", () => {
+    const TMP = join(process.cwd(), ".test-scanner-dedup");
+
+    afterEach(() => {
+      try {
+        rmSync(TMP, { recursive: true, force: true });
+      } catch {
+        /* ignore */
+      }
+    });
+
+    it("deduplicates endpoints with the same method and path across files", async () => {
+      mkdirSync(TMP, { recursive: true });
+      writeFileSync(join(TMP, "a.ts"), "// file a");
+      writeFileSync(join(TMP, "b.ts"), "// file b");
+
+      // Adapter always returns the same endpoint regardless of which file is parsed
+      const adapter = createMockAdapter([
+        { method: "GET", path: "/health", handler: "healthCheck", params: [] },
+      ]);
+
+      const scanner = new Scanner(adapter);
+      const endpoints = await scanner.scan({ directory: TMP, framework: Framework.Express });
+
+      // Two .ts files → adapter called twice → would yield 2 without deduplication
+      expect(endpoints).toHaveLength(1);
+      expect(endpoints[0].path).toBe("/health");
+    });
+
+    it("preserves distinct endpoints from different files", async () => {
+      mkdirSync(TMP, { recursive: true });
+      writeFileSync(join(TMP, "users.ts"), "// users");
+      writeFileSync(join(TMP, "posts.ts"), "// posts");
+
+      let callCount = 0;
+      const adapter: Adapter = {
+        framework: Framework.Express,
+        fileExtensions: [".ts"],
+        parse: () => {
+          callCount++;
+          return callCount === 1
+            ? [{ method: "GET", path: "/users", handler: "getUsers", params: [] }]
+            : [{ method: "GET", path: "/posts", handler: "getPosts", params: [] }];
+        },
+      };
+
+      const scanner = new Scanner(adapter);
+      const endpoints = await scanner.scan({ directory: TMP, framework: Framework.Express });
+
+      expect(endpoints).toHaveLength(2);
+    });
   });
 });
