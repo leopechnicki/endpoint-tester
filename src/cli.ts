@@ -20,11 +20,19 @@ program
   .description("Auto-discover API endpoints and generate comprehensive test suites")
   .version(version);
 
+const VALID_FRAMEWORKS = Object.values(Framework);
+
 /**
  * Resolve the framework — use the explicit flag if provided, otherwise auto-detect.
  */
 async function resolveFramework(directory: string, explicitFramework?: string): Promise<Framework> {
   if (explicitFramework) {
+    if (!VALID_FRAMEWORKS.includes(explicitFramework as Framework)) {
+      console.error(
+        `Invalid --framework: "${explicitFramework}". Must be one of: ${VALID_FRAMEWORKS.join(", ")}.`,
+      );
+      process.exit(1);
+    }
     return explicitFramework as Framework;
   }
 
