@@ -196,5 +196,29 @@ app.post('/users', createUser);
       // stdout should be empty (no successful output before the early exit)
       expect(stdout.trim()).toBe("");
     });
+
+    it("should reject an invalid --framework value in generate", () => {
+      setupProject({
+        "app.ts": `app.get('/users', getUsers);`,
+      });
+
+      const { stderr, exitCode } = runCli(["generate", TEST_DIR, "--framework", "rails"]);
+      expect(exitCode).toBe(1);
+      expect(stderr).toContain("Invalid --framework");
+      expect(stderr).toContain("rails");
+    });
+  });
+
+  describe("scan command framework validation", () => {
+    it("should reject an invalid --framework value in scan", () => {
+      setupProject({
+        "app.ts": `app.get('/users', getUsers);`,
+      });
+
+      const { stderr, exitCode } = runCli(["scan", TEST_DIR, "--framework", "rails"]);
+      expect(exitCode).toBe(1);
+      expect(stderr).toContain("Invalid --framework");
+      expect(stderr).toContain("rails");
+    });
   });
 });
