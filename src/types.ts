@@ -58,9 +58,13 @@ export interface ScanOptions {
   exclude?: string[];
 }
 
+/** The set of test output formats this tool supports. */
+export const SUPPORTED_FORMATS = ["vitest", "jest", "pytest"] as const;
+export type SupportedFormat = (typeof SUPPORTED_FORMATS)[number];
+
 export interface GenerateOptions {
   endpoints: Endpoint[];
   output: string;
-  format: "vitest" | "jest" | "pytest";
+  format: SupportedFormat;
   baseUrl?: string;
 }
