@@ -3,10 +3,20 @@ import { join } from "node:path";
 import { glob } from "glob";
 import { Framework } from "./types.js";
 
-interface DetectionResult {
+export interface DetectionResult {
   framework: Framework;
   confidence: "high" | "medium" | "low";
   reason: string;
+}
+
+// Gate diagnostic output behind DEBUG so the CLI stays quiet by default
+// but bad dependency files are discoverable when users ask why detection
+// fell through.
+function warnOnReadError(path: string, err: unknown): void {
+  if (process.env.DEBUG) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(`[endpoint-tester] could not read ${path}: ${message}`);
+  }
 }
 
 /**
@@ -77,7 +87,8 @@ function detectFromPackageJson(directory: string): DetectionResult | null {
     }
 
     return null;
-  } catch {
+  } catch (err) {
+    warnOnReadError(pkgPath, err);
     return null;
   }
 }
@@ -97,7 +108,9 @@ function detectFromPythonDeps(directory: string): DetectionResult | null {
       if (content.includes("django")) {
         return { framework: Framework.Django, confidence: "high", reason: "django found in requirements.txt" };
       }
-    } catch { /* ignore */ }
+    } catch (err) {
+      warnOnReadError(reqPath, err);
+    }
   }
 
   // Check pyproject.toml
@@ -114,7 +127,9 @@ function detectFromPythonDeps(directory: string): DetectionResult | null {
       if (content.includes("django")) {
         return { framework: Framework.Django, confidence: "high", reason: "django found in pyproject.toml" };
       }
-    } catch { /* ignore */ }
+    } catch (err) {
+      warnOnReadError(pyprojectPath, err);
+    }
   }
 
   // Check setup.py
@@ -131,7 +146,9 @@ function detectFromPythonDeps(directory: string): DetectionResult | null {
       if (content.includes("django")) {
         return { framework: Framework.Django, confidence: "high", reason: "django found in setup.py" };
       }
-    } catch { /* ignore */ }
+    } catch (err) {
+      warnOnReadError(setupPath, err);
+    }
   }
 
   return null;
@@ -146,7 +163,9 @@ function detectFromJavaBuild(directory: string): DetectionResult | null {
       if (content.includes("spring-boot") || content.includes("spring-web")) {
         return { framework: Framework.Spring, confidence: "high", reason: "Spring Boot found in pom.xml" };
       }
-    } catch { /* ignore */ }
+    } catch (err) {
+      warnOnReadError(pomPath, err);
+    }
   }
 
   // Check build.gradle or build.gradle.kts
@@ -158,7 +177,9 @@ function detectFromJavaBuild(directory: string): DetectionResult | null {
         if (content.includes("spring-boot") || content.includes("org.springframework")) {
           return { framework: Framework.Spring, confidence: "high", reason: `Spring Boot found in ${gradleFile}` };
         }
-      } catch { /* ignore */ }
+      } catch (err) {
+        warnOnReadError(gradlePath, err);
+      }
     }
   }
 
@@ -197,7 +218,9 @@ async function detectFromFilePatterns(directory: string): Promise<DetectionResul
           content.includes("from 'express'") || content.includes("from \"express\"")) {
         return { framework: Framework.Express, confidence: "medium", reason: `Express import found in ${file}` };
       }
-    } catch { /* ignore */ }
+    } catch (err) {
+      warnOnReadError(file, err);
+    }
   }
 
   // Look for Python framework patterns
@@ -214,7 +237,9 @@ async function detectFromFilePatterns(directory: string): Promise<DetectionResul
       if (content.includes("from django") || content.includes("import django")) {
         return { framework: Framework.Django, confidence: "medium", reason: `Django import found in ${file}` };
       }
-    } catch { /* ignore */ }
+    } catch (err) {
+      warnOnReadError(file, err);
+    }
   }
 
   // Look for Spring patterns in Java/Kotlin files
@@ -225,7 +250,9 @@ async function detectFromFilePatterns(directory: string): Promise<DetectionResul
       if (content.includes("org.springframework")) {
         return { framework: Framework.Spring, confidence: "medium", reason: `Spring import found in ${file}` };
       }
-    } catch { /* ignore */ }
+    } catch (err) {
+      warnOnReadError(file, err);
+    }
   }
 
   return null;

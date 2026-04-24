@@ -4,9 +4,9 @@ import { Command } from "commander";
 import { resolve, dirname, extname } from "node:path";
 import { writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import { Scanner } from "./scanner.js";
-import { TestGenerator, SUPPORTED_FORMATS } from "./generator.js";
+import { TestGenerator } from "./generator.js";
 import { getAdapter } from "./adapters/index.js";
-import { Framework } from "./types.js";
+import { Framework, SUPPORTED_FORMATS, type SupportedFormat } from "./types.js";
 import { detectFramework } from "./detect.js";
 
 const program = new Command();
@@ -147,7 +147,7 @@ program
       const testContent = generator.generate({
         endpoints,
         output: options.output,
-        format: options.format as "vitest" | "jest" | "pytest",
+        format: options.format as SupportedFormat,
         baseUrl: options.baseUrl,
       });
 
