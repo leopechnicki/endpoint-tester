@@ -27,16 +27,19 @@ Every API project needs endpoint tests. Writing them is tedious, repetitive, and
 ```
 Source code in  -->  [endpoint-tester]  -->  Test suite out
   Express                                     Vitest / Jest
-  FastAPI                                     Pytest
-  Spring Boot
+  Fastify                                     Pytest
+  Koa
+  NestJS
+  FastAPI
   Flask
   Django
+  Spring Boot
 ```
 
 ## Features
 
 - **Auto-detection** -- Detects your framework automatically from package.json, requirements.txt, pom.xml, or source imports. No config needed.
-- **5 framework adapters** -- Express.js, FastAPI, Spring Boot, Flask, Django. Extensible for any framework via the Adapter interface.
+- **8 framework adapters** -- Express.js, Fastify, Koa, NestJS, FastAPI, Flask, Django, Spring Boot. Extensible for any framework via the Adapter interface.
 - **3 test formats** -- Vitest, Jest, Pytest. Generated tests include status code assertions, auth header tests, error response tests, and boundary value tests.
 - **Smart route parsing** -- Handles router prefixes, middleware chains, `app.route()` chaining, multi-line decorators, class-level annotations, Blueprints, and more.
 - **Zero config** -- Works out of the box. One command, one output.
@@ -107,7 +110,7 @@ Running `endpoint-tester generate ./src --format vitest` generates a complete te
 
 | Option | Description | Default |
 |---|---|---|
-| `--framework` / `-f` | Framework adapter (express, fastapi, spring, django, flask). Auto-detected if omitted. | auto-detect |
+| `--framework` / `-f` | Framework adapter (express, fastify, koa, nestjs, fastapi, flask, django, spring). Auto-detected if omitted. | auto-detect |
 | `--output` / `-o` | Output path -- directory or file path | `./generated-tests` |
 | `--format` | Test format (vitest, jest, pytest) | `vitest` |
 | `--base-url` | Base URL for test requests | `http://localhost:3000` |
@@ -117,10 +120,13 @@ Running `endpoint-tester generate ./src --format vitest` generates a complete te
 | Framework | Patterns detected |
 |---|---|
 | **Express.js** | `app.get()`, `router.post()`, `app.route().get().post()`, route params, router prefixes via `app.use()` and `router.use()`, middleware chains |
+| **Fastify** | `fastify.get()`, `fastify.route({ method, url, handler })`, shorthand method registrations |
+| **Koa** | `@koa/router` with `router.get()` / `router.post()`, route params, `router.prefix()` |
+| **NestJS** | `@Controller('prefix')` + method decorators (`@Get`, `@Post`, ...), `@Param`, `@Query`, `@Body` DTO inference |
 | **FastAPI** | `@app.get()`, `@router.post()`, `APIRouter` prefixes, `{param}` parameters, multi-line decorators with kwargs |
-| **Spring Boot** | `@GetMapping`, `@PostMapping`, `@RequestMapping` (both argument orderings), class-level `@RequestMapping` prefix, `@PathVariable`, multiline annotations, Kotlin `fun` syntax |
 | **Flask** | `@app.route()` with methods list, `@app.get()` shorthand, `Blueprint` url_prefix, typed parameters (`<int:id>`) |
 | **Django** | `path()`, `re_path()`, typed parameters (`<int:pk>`), regex named groups |
+| **Spring Boot** | `@GetMapping`, `@PostMapping`, `@RequestMapping` (both argument orderings), class-level `@RequestMapping` prefix, `@PathVariable`, multiline annotations, Kotlin `fun` syntax |
 
 ## Test formats
 
@@ -188,7 +194,7 @@ registerAdapter(new HonoAdapter());
 | **Keeps up with code** | Re-scan anytime | Manual updates | Re-export |
 | **Boundary tests** | Automatic | Write each one | Manual |
 | **Auth tests** | Automatic | Write each one | Configure per request |
-| **Multi-framework** | 5 built-in | N/A | Framework-agnostic |
+| **Multi-framework** | 8 built-in | N/A | Framework-agnostic |
 | **CI friendly** | CLI output | Already in repo | Needs Newman |
 
 ## Development
@@ -247,10 +253,15 @@ import {
 
 Contributions are welcome. Areas with the most impact:
 
-- New framework adapters (Hono, Koa, NestJS, Gin, etc.)
+- New framework adapters (Hono, Gin, Actix, Laravel, etc.)
 - Smarter body inference from type annotations
 - OpenAPI/Swagger output format
 - Watch mode for continuous test generation
+
+Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)
+(`feat:`, `fix:`, `chore:`, ...). Releases are cut automatically by
+[release-please](https://github.com/googleapis/release-please-action)
+based on the commit history.
 
 ## License
 
