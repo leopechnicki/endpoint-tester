@@ -1,4 +1,7 @@
 import type { Endpoint, GenerateOptions, HttpMethod } from "./types.js";
+import { SUPPORTED_FORMATS, type SupportedFormat } from "./types.js";
+
+export { SUPPORTED_FORMATS, type SupportedFormat };
 
 /**
  * Map of HTTP methods to their expected success status codes.
@@ -47,13 +50,6 @@ function escapeForStringLiteral(value: string): string {
     .replace(/\r/g, "\\r")
     .replace(/\t/g, "\\t");
 }
-
-/**
- * The set of test formats this generator supports.
- * Import this in the CLI to keep format validation in sync.
- */
-export const SUPPORTED_FORMATS = ["vitest", "jest", "pytest"] as const;
-export type SupportedFormat = (typeof SUPPORTED_FORMATS)[number];
 
 export class TestGenerator {
   /**
