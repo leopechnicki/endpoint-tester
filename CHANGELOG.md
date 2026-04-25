@@ -1,0 +1,46 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.2.1] - 2026-04-21
+
+### Fixed
+- **CRITICAL**: `__dirname` used in ESM context in `cli.ts` caused `ReferenceError` on every run. Replaced with proper ESM shim using `import.meta.url` + `fileURLToPath`.
+- **CRITICAL**: Added `"type": "module"` to `package.json` to match the ESM module system used by the codebase (`"module": "NodeNext"` in tsconfig).
+- Pytest variant test functions now always guarantee a `test_` prefix via `sanitizePythonName`, preventing silent pytest discovery failures.
+
+### Added
+- Fastify, Koa, and NestJS adapters documented in README (previously built but hidden).
+- `CHANGELOG.md` for tracking project changes.
+
+### Changed
+- README updated to reflect all 8 framework adapters instead of 5.
+- Contributing section updated (Koa and NestJS already implemented).
+
+## [0.2.0] - 2026-04-15
+
+### Added
+- Fastify adapter: `fastify.get()`, `fastify.route()`, `server.register()` prefixes, schema options.
+- Koa adapter: `router.get()`, `router.prefix()`, middleware chains, `router.all()`.
+- NestJS adapter: `@Get()`, `@Post()`, `@Controller()` prefix, `@Param()`, `@Query()`, `@Body()`.
+- Response schema validation tests (content-type, JSON structure, known fields).
+- Smart body inference tests (missing field, wrong type per field).
+- Query parameter tests (provided, missing required, boundary values).
+- Enhanced auth tests (valid token, no token, malformed token).
+- Auto-detection for Fastify, Koa, and NestJS frameworks.
+
+## [0.1.0] - 2026-04-10
+
+### Added
+- Initial release.
+- Express.js, FastAPI, Spring Boot, Flask, Django adapters.
+- Vitest, Jest, Pytest test generation.
+- Framework auto-detection from package.json, requirements.txt, pom.xml.
+- CLI with `scan` and `generate` commands.
+- Boundary value tests for path parameters.
+- Auth header tests.
+- Error response tests for body-accepting endpoints.
+- Programmatic API with `Scanner`, `TestGenerator`, `getAdapter`, `registerAdapter`, `detectFramework`.

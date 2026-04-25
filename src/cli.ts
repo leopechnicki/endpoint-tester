@@ -2,12 +2,16 @@
 
 import { Command } from "commander";
 import { resolve, dirname, extname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import { Scanner } from "./scanner.js";
 import { TestGenerator } from "./generator.js";
 import { getAdapter } from "./adapters/index.js";
 import { Framework } from "./types.js";
 import { detectFramework } from "./detect.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const program = new Command();
 

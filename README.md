@@ -31,12 +31,15 @@ Source code in  -->  [endpoint-tester]  -->  Test suite out
   Spring Boot
   Flask
   Django
+  Fastify
+  Koa
+  NestJS
 ```
 
 ## Features
 
 - **Auto-detection** -- Detects your framework automatically from package.json, requirements.txt, pom.xml, or source imports. No config needed.
-- **5 framework adapters** -- Express.js, FastAPI, Spring Boot, Flask, Django. Extensible for any framework via the Adapter interface.
+- **8 framework adapters** -- Express.js, FastAPI, Spring Boot, Flask, Django, Fastify, Koa, NestJS. Extensible for any framework via the Adapter interface.
 - **3 test formats** -- Vitest, Jest, Pytest. Generated tests include status code assertions, auth header tests, error response tests, and boundary value tests.
 - **Smart route parsing** -- Handles router prefixes, middleware chains, `app.route()` chaining, multi-line decorators, class-level annotations, Blueprints, and more.
 - **Zero config** -- Works out of the box. One command, one output.
@@ -107,7 +110,7 @@ Running `endpoint-tester generate ./src --format vitest` generates a complete te
 
 | Option | Description | Default |
 |---|---|---|
-| `--framework` / `-f` | Framework adapter (express, fastapi, spring, django, flask). Auto-detected if omitted. | auto-detect |
+| `--framework` / `-f` | Framework adapter (express, fastapi, spring, django, flask, fastify, koa, nestjs). Auto-detected if omitted. | auto-detect |
 | `--output` / `-o` | Output path -- directory or file path | `./generated-tests` |
 | `--format` | Test format (vitest, jest, pytest) | `vitest` |
 | `--base-url` | Base URL for test requests | `http://localhost:3000` |
@@ -121,6 +124,9 @@ Running `endpoint-tester generate ./src --format vitest` generates a complete te
 | **Spring Boot** | `@GetMapping`, `@PostMapping`, `@RequestMapping` (both argument orderings), class-level `@RequestMapping` prefix, `@PathVariable`, multiline annotations, Kotlin `fun` syntax |
 | **Flask** | `@app.route()` with methods list, `@app.get()` shorthand, `Blueprint` url_prefix, typed parameters (`<int:id>`) |
 | **Django** | `path()`, `re_path()`, typed parameters (`<int:pk>`), regex named groups |
+| **Fastify** | `fastify.get()`, `fastify.route({ method, url })`, `server.register()` prefixes, schema options, route params |
+| **Koa** | `router.get()`, `router.post()`, `router.prefix()`, route params, middleware chains, `router.all()` |
+| **NestJS** | `@Get()`, `@Post()`, `@Controller()` prefix, `@Param()`, `@Query()`, `@Body()` decorators, route params |
 
 ## Test formats
 
@@ -187,14 +193,14 @@ registerAdapter(new HonoAdapter());
 | **Keeps up with code** | Re-scan anytime | Manual updates | Re-export |
 | **Boundary tests** | Automatic | Write each one | Manual |
 | **Auth tests** | Automatic | Write each one | Configure per request |
-| **Multi-framework** | 5 built-in | N/A | Framework-agnostic |
+| **Multi-framework** | 8 built-in | N/A | Framework-agnostic |
 | **CI friendly** | CLI output | Already in repo | Needs Newman |
 
 ## Contributing
 
 Contributions are welcome. Areas with the most impact:
 
-- New framework adapters (Hono, Koa, NestJS, Gin, etc.)
+- New framework adapters (Hono, Gin, Actix, etc.)
 - Smarter body inference from type annotations
 - OpenAPI/Swagger output format
 - Watch mode for continuous test generation
