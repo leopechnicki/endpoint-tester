@@ -2,6 +2,7 @@
   "name": "endpoint-tester",
   "version": "0.2.0",
   "description": "Auto-discover API endpoints and generate comprehensive test suites",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -17,6 +18,7 @@
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",

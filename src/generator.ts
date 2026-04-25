@@ -788,11 +788,13 @@ export class TestGenerator {
   }
 
   private sanitizePythonName(name: string): string {
-    return name
+    const sanitized = name
       .replace(/-/g, "neg")
       .replace(/[^a-zA-Z0-9_]/g, "_")
       .replace(/_+/g, "_")
       .replace(/^_+|_+$/g, "")
       .replace(/^(\d)/, "_$1");
+    // Ensure pytest discovers the function by requiring a test_ prefix
+    return sanitized.startsWith("test_") ? sanitized : `test_${sanitized}`;
   }
 }
