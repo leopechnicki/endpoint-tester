@@ -4,6 +4,10 @@ export enum Framework {
   Spring = "spring",
   Django = "django",
   Flask = "flask",
+  Gin = "gin",
+  Echo = "echo",
+  Chi = "chi",
+  NetHttp = "nethttp",
 }
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS";
@@ -54,6 +58,6 @@ export interface ScanOptions {
 export interface GenerateOptions {
   endpoints: Endpoint[];
   output: string;
-  format: "vitest" | "jest" | "pytest";
+  format: "vitest" | "jest" | "pytest" | "go";
   baseUrl?: string;
 }

@@ -31,6 +31,10 @@ export async function detectFramework(directory: string): Promise<DetectionResul
   const javaResult = detectFromJavaBuild(directory);
   if (javaResult) return javaResult;
 
+  // Strategy 3b: Go module file
+  const goResult = detectFromGoMod(directory);
+  if (goResult) return goResult;
+
   // Strategy 4: File pattern scanning (fallback)
   const patternResult = await detectFromFilePatterns(directory);
   if (patternResult) return patternResult;
@@ -148,6 +152,30 @@ function detectFromJavaBuild(directory: string): DetectionResult | null {
   return null;
 }
 
+function detectFromGoMod(directory: string): DetectionResult | null {
+  const goModPath = join(directory, "go.mod");
+  if (!existsSync(goModPath)) return null;
+
+  try {
+    const content = readFileSync(goModPath, "utf-8");
+
+    if (content.includes("github.com/gin-gonic/gin")) {
+      return { framework: Framework.Gin, confidence: "high", reason: "gin found in go.mod" };
+    }
+    if (content.includes("github.com/labstack/echo")) {
+      return { framework: Framework.Echo, confidence: "high", reason: "echo found in go.mod" };
+    }
+    if (content.includes("github.com/go-chi/chi")) {
+      return { framework: Framework.Chi, confidence: "high", reason: "chi found in go.mod" };
+    }
+
+    // go.mod exists but no known framework — assume net/http
+    return { framework: Framework.NetHttp, confidence: "medium", reason: "go.mod present, no known router dependency" };
+  } catch {
+    return null;
+  }
+}
+
 async function detectFromFilePatterns(directory: string): Promise<DetectionResult | null> {
   const defaultExclude = ["node_modules/**", "dist/**", "build/**", ".git/**", "venv/**", "__pycache__/**"];
 
@@ -187,6 +215,26 @@ async function detectFromFilePatterns(directory: string): Promise<DetectionResul
       const content = readFileSync(file, "utf-8");
       if (content.includes("org.springframework")) {
         return { framework: Framework.Spring, confidence: "medium", reason: `Spring import found in ${file}` };
+      }
+    } catch { /* ignore */ }
+  }
+
+  // Look for Go framework patterns in .go files
+  const goFiles = await glob("**/*.go", { cwd: directory, ignore: defaultExclude, absolute: true });
+  for (const file of goFiles.slice(0, 20)) {
+    try {
+      const content = readFileSync(file, "utf-8");
+      if (content.includes("gin.Default()") || content.includes("gin.New()")) {
+        return { framework: Framework.Gin, confidence: "medium", reason: `Gin usage found in ${file}` };
+      }
+      if (content.includes("echo.New()")) {
+        return { framework: Framework.Echo, confidence: "medium", reason: `Echo usage found in ${file}` };
+      }
+      if (content.includes("chi.NewRouter()")) {
+        return { framework: Framework.Chi, confidence: "medium", reason: `Chi usage found in ${file}` };
+      }
+      if (content.includes("http.HandleFunc") || content.includes("mux.HandleFunc")) {
+        return { framework: Framework.NetHttp, confidence: "medium", reason: `net/http usage found in ${file}` };
       }
     } catch { /* ignore */ }
   }

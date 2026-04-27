@@ -5,6 +5,10 @@ import { FastAPIAdapter } from "./fastapi.js";
 import { SpringAdapter } from "./spring.js";
 import { DjangoAdapter } from "./django.js";
 import { FlaskAdapter } from "./flask.js";
+import { GinAdapter } from "./gin.js";
+import { EchoAdapter } from "./echo.js";
+import { ChiAdapter } from "./chi.js";
+import { NetHttpAdapter } from "./nethttp.js";
 
 const adapterRegistry = new Map<Framework, Adapter>();
 
@@ -32,5 +36,9 @@ registerAdapter(new FastAPIAdapter());
 registerAdapter(new SpringAdapter());
 registerAdapter(new DjangoAdapter());
 registerAdapter(new FlaskAdapter());
+registerAdapter(new GinAdapter());
+registerAdapter(new EchoAdapter());
+registerAdapter(new ChiAdapter());
+registerAdapter(new NetHttpAdapter());
 
-export { ExpressAdapter, FastAPIAdapter, SpringAdapter, DjangoAdapter, FlaskAdapter };
+export { ExpressAdapter, FastAPIAdapter, SpringAdapter, DjangoAdapter, FlaskAdapter, GinAdapter, EchoAdapter, ChiAdapter, NetHttpAdapter };

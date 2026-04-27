@@ -46,6 +46,8 @@ export class TestGenerator {
         return this.generateJest(options.endpoints, options.baseUrl);
       case "pytest":
         return this.generatePytest(options.endpoints, options.baseUrl);
+      case "go":
+        return this.generateGo(options.endpoints);
       default:
         throw new Error(`Unsupported test format: ${options.format}`);
     }
@@ -204,6 +206,70 @@ export class TestGenerator {
     }
 
     return lines.join("\n");
+  }
+
+  private generateGo(endpoints: Endpoint[]): string {
+    const lines: string[] = [
+      `package endpoint_test`,
+      ``,
+      `import (`,
+      `\t"net/http"`,
+      `\t"net/http/httptest"`,
+      `\t"testing"`,
+      `)`,
+      ``,
+    ];
+
+    for (const ep of endpoints) {
+      const testPath = this.buildGoTestPath(ep);
+      const funcName = this.toGoFuncName(ep);
+      const expectedStatus = this.getExpectedStatus(ep.method);
+      const httpMethod = `http.Method${this.toGoMethodName(ep.method)}`;
+
+      // Main success test
+      lines.push(`func ${funcName}(t *testing.T) {`);
+      lines.push(`\treq := httptest.NewRequest(${httpMethod}, "${testPath}", nil)`);
+      lines.push(`\tw := httptest.NewRecorder()`);
+      lines.push(`\t// TODO: wire your router here, e.g.: router.ServeHTTP(w, req)`);
+      lines.push(`\tif w.Code != ${expectedStatus} {`);
+      lines.push(`\t\tt.Errorf("expected ${expectedStatus}, got %d", w.Code)`);
+      lines.push(`\t}`);
+      lines.push(`}`);
+      lines.push(``);
+
+      // Auth header test
+      lines.push(`func ${funcName}_WithAuth(t *testing.T) {`);
+      lines.push(`\treq := httptest.NewRequest(${httpMethod}, "${testPath}", nil)`);
+      lines.push(`\treq.Header.Set("Authorization", "Bearer test-token")`);
+      lines.push(`\tw := httptest.NewRecorder()`);
+      lines.push(`\t// TODO: wire your router here, e.g.: router.ServeHTTP(w, req)`);
+      lines.push(`\tif w.Code >= 500 {`);
+      lines.push(`\t\tt.Errorf("expected non-5xx, got %d", w.Code)`);
+      lines.push(`\t}`);
+      lines.push(`}`);
+      lines.push(``);
+    }
+
+    return lines.join("\n");
+  }
+
+  private buildGoTestPath(ep: Endpoint): string {
+    // Replace :param with a test value
+    return ep.path.replace(/:(\w+)/g, "test-$1");
+  }
+
+  private toGoFuncName(ep: Endpoint): string {
+    const pathPart = ep.path
+      .replace(/[/:{}]/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .replace(/_+/g, "_");
+    const methodPart = ep.method.charAt(0).toUpperCase() + ep.method.slice(1).toLowerCase();
+    return `Test${methodPart}_${pathPart}`;
+  }
+
+  private toGoMethodName(method: HttpMethod): string {
+    // http.MethodGet, http.MethodPost, etc.
+    return method.charAt(0).toUpperCase() + method.slice(1).toLowerCase();
   }
 
   // --- TypeScript test helpers (shared by Vitest and Jest) ---
