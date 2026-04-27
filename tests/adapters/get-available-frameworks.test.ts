@@ -16,9 +16,17 @@ describe("getAvailableFrameworks", () => {
     expect(frameworks).toContain(Framework.NestJS);
   });
 
-  it("should return exactly 8 built-in frameworks", () => {
+  it("should return exactly 12 built-in frameworks", () => {
     const frameworks = getAvailableFrameworks();
-    expect(frameworks).toHaveLength(8);
+    expect(frameworks).toHaveLength(12);
+  });
+
+  it("should include all Go frameworks", () => {
+    const frameworks = getAvailableFrameworks();
+    expect(frameworks).toContain(Framework.Gin);
+    expect(frameworks).toContain(Framework.Echo);
+    expect(frameworks).toContain(Framework.Chi);
+    expect(frameworks).toContain(Framework.NetHttp);
   });
 
   it("should return an array of Framework enum values", () => {

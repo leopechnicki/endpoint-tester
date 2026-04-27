@@ -7,6 +7,10 @@ export enum Framework {
   Fastify = "fastify",
   Koa = "koa",
   NestJS = "nestjs",
+  Gin = "gin",
+  Echo = "echo",
+  Chi = "chi",
+  NetHttp = "nethttp",
 }
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS";
@@ -59,7 +63,7 @@ export interface ScanOptions {
 }
 
 /** The set of test output formats this tool supports. */
-export const SUPPORTED_FORMATS = ["vitest", "jest", "pytest"] as const;
+export const SUPPORTED_FORMATS = ["vitest", "jest", "pytest", "go"] as const;
 export type SupportedFormat = (typeof SUPPORTED_FORMATS)[number];
 
 export interface GenerateOptions {

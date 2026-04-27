@@ -8,6 +8,10 @@ import { FlaskAdapter } from "./flask.js";
 import { FastifyAdapter } from "./fastify.js";
 import { KoaAdapter } from "./koa.js";
 import { NestJSAdapter } from "./nestjs.js";
+import { GinAdapter } from "./gin.js";
+import { EchoAdapter } from "./echo.js";
+import { ChiAdapter } from "./chi.js";
+import { NetHttpAdapter } from "./nethttp.js";
 
 const adapterRegistry = new Map<Framework, Adapter>();
 
@@ -38,5 +42,9 @@ registerAdapter(new FlaskAdapter());
 registerAdapter(new FastifyAdapter());
 registerAdapter(new KoaAdapter());
 registerAdapter(new NestJSAdapter());
+registerAdapter(new GinAdapter());
+registerAdapter(new EchoAdapter());
+registerAdapter(new ChiAdapter());
+registerAdapter(new NetHttpAdapter());
 
-export { ExpressAdapter, FastAPIAdapter, SpringAdapter, DjangoAdapter, FlaskAdapter, FastifyAdapter, KoaAdapter, NestJSAdapter };
+export { ExpressAdapter, FastAPIAdapter, SpringAdapter, DjangoAdapter, FlaskAdapter, FastifyAdapter, KoaAdapter, NestJSAdapter, GinAdapter, EchoAdapter, ChiAdapter, NetHttpAdapter };

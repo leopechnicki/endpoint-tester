@@ -47,7 +47,7 @@ async function resolveFramework(directory: string, explicitFramework?: string): 
   }
 
   console.log("Could not auto-detect framework. Defaulting to express.");
-  console.log("Hint: use --framework to specify explicitly (express, fastapi, spring, django, flask, fastify, koa, nestjs)");
+  console.log("Hint: use --framework to specify explicitly (express, fastapi, spring, django, flask, fastify, koa, nestjs, gin, echo, chi, nethttp)");
   return Framework.Express;
 }
 
@@ -57,7 +57,7 @@ program
   .argument("<directory>", "Directory to scan")
   .option(
     "-f, --framework <framework>",
-    "Framework to scan for (express, fastapi, spring, django, flask, fastify, koa, nestjs)",
+    "Framework to scan for (express, fastapi, spring, django, flask, fastify, koa, nestjs, gin, echo, chi, nethttp)",
   )
   .option("-o, --output <file>", "Output file for results (JSON)")
   .action(async (directory: string, options: { framework?: string; output?: string }) => {
@@ -94,14 +94,14 @@ program
   .argument("<directory>", "Directory to scan for endpoints")
   .option(
     "-f, --framework <framework>",
-    "Framework to scan for (express, fastapi, spring, django, flask, fastify, koa, nestjs)",
+    "Framework to scan for (express, fastapi, spring, django, flask, fastify, koa, nestjs, gin, echo, chi, nethttp)",
   )
   .option(
     "-o, --output <path>",
     "Output path — directory or file (e.g. ./tests or ./tests/api.test.ts)",
     "./generated-tests",
   )
-  .option("--format <format>", "Test format (vitest, jest, pytest)", "vitest")
+  .option("--format <format>", "Test format (vitest, jest, pytest, go)", "vitest")
   .option("--base-url <url>", "Base URL for tests", "http://localhost:3000")
   .action(
     async (
@@ -166,8 +166,10 @@ program
       } else {
         // User provided a directory path
         mkdirSync(outputPath, { recursive: true });
-        const ext = options.format === "pytest" ? "py" : "ts";
-        outFile = resolve(outputPath, `endpoints.test.${ext}`);
+        const ext = options.format === "pytest" ? "py" : options.format === "go" ? "go" : "ts";
+        const testFileSuffix = options.format === "go" ? "_test" : ".test";
+        const testFileName = options.format === "go" ? `endpoints_test.${ext}` : `endpoints${testFileSuffix}.${ext}`;
+        outFile = resolve(outputPath, testFileName);
       }
 
       writeFileSync(outFile, testContent);

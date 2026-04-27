@@ -39,7 +39,7 @@ Source code in  -->  [endpoint-tester]  -->  Test suite out
 ## Features
 
 - **Auto-detection** -- Detects your framework automatically from package.json, requirements.txt, pom.xml, or source imports. No config needed.
-- **8 framework adapters** -- Express.js, Fastify, Koa, NestJS, FastAPI, Flask, Django, Spring Boot. Extensible for any framework via the Adapter interface.
+- **12 framework adapters** -- Express.js, Fastify, Koa, NestJS, FastAPI, Flask, Django, Spring Boot, Gin, Echo, Chi, net/http. Extensible for any framework via the Adapter interface.
 - **3 test formats** -- Vitest, Jest, Pytest. Generated tests include status code assertions, auth header tests, error response tests, and boundary value tests.
 - **Smart route parsing** -- Handles router prefixes, middleware chains, `app.route()` chaining, multi-line decorators, class-level annotations, Blueprints, and more.
 - **Zero config** -- Works out of the box. One command, one output.
@@ -110,7 +110,7 @@ Running `endpoint-tester generate ./src --format vitest` generates a complete te
 
 | Option | Description | Default |
 |---|---|---|
-| `--framework` / `-f` | Framework adapter (express, fastify, koa, nestjs, fastapi, flask, django, spring). Auto-detected if omitted. | auto-detect |
+| `--framework` / `-f` | Framework adapter (express, fastapi, spring, django, flask, fastify, koa, nestjs, gin, echo, chi, nethttp). Auto-detected if omitted. | auto-detect |
 | `--output` / `-o` | Output path -- directory or file path | `./generated-tests` |
 | `--format` | Test format (vitest, jest, pytest) | `vitest` |
 | `--base-url` | Base URL for test requests | `http://localhost:3000` |
@@ -127,6 +127,10 @@ Running `endpoint-tester generate ./src --format vitest` generates a complete te
 | **Flask** | `@app.route()` with methods list, `@app.get()` shorthand, `Blueprint` url_prefix, typed parameters (`<int:id>`) |
 | **Django** | `path()`, `re_path()`, typed parameters (`<int:pk>`), regex named groups |
 | **Spring Boot** | `@GetMapping`, `@PostMapping`, `@RequestMapping` (both argument orderings), class-level `@RequestMapping` prefix, `@PathVariable`, multiline annotations, Kotlin `fun` syntax |
+| **Gin** | `r.GET()`, `r.POST()`, `router.Group()` prefixes, route params (`:id`), `gin.Default()` and `gin.New()` |
+| **Echo** | `e.GET()`, `e.POST()`, `e.Group()` prefixes, route params (`:id`), `echo.New()` |
+| **Chi** | `r.Get()`, `r.Post()`, `r.Route()`, `r.Mount()` prefixes, route params (`{id}`) |
+| **net/http** | `http.HandleFunc()`, `mux.HandleFunc()`, `http.Handle()`, route params (custom patterns) |
 
 ## Test formats
 
