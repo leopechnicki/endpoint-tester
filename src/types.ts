@@ -4,6 +4,9 @@ export enum Framework {
   Spring = "spring",
   Django = "django",
   Flask = "flask",
+  Fastify = "fastify",
+  Koa = "koa",
+  NestJS = "nestjs",
   Gin = "gin",
   Echo = "echo",
   Chi = "chi",
@@ -27,6 +30,10 @@ export interface EndpointBody {
 export interface EndpointResponse {
   status?: number;
   type?: string;
+  /** Known response fields (inferred from source) */
+  fields?: Record<string, string>;
+  /** Whether response is an array */
+  isArray?: boolean;
 }
 
 export interface Endpoint {
@@ -55,9 +62,13 @@ export interface ScanOptions {
   exclude?: string[];
 }
 
+/** The set of test output formats this tool supports. */
+export const SUPPORTED_FORMATS = ["vitest", "jest", "pytest", "go"] as const;
+export type SupportedFormat = (typeof SUPPORTED_FORMATS)[number];
+
 export interface GenerateOptions {
   endpoints: Endpoint[];
   output: string;
-  format: "vitest" | "jest" | "pytest" | "go";
+  format: SupportedFormat;
   baseUrl?: string;
 }

@@ -46,7 +46,7 @@ export class SpringAdapter implements Adapter {
     // Try specific mapping annotations first: @GetMapping, @PostMapping, etc.
     // Handle both @GetMapping("/path") and @GetMapping(value = "/path")
     const specificMatch = trimmed.match(
-      /@(Get|Post|Put|Delete|Patch)Mapping\s*\(\s*(?:value\s*=\s*)?['"]([^'"]*)['"]/,
+      /@(Get|Post|Put|Delete|Patch|Head|Options)Mapping\s*\(\s*(?:value\s*=\s*)?['"]([^'"]*)['"]/,
     );
     if (specificMatch) {
       const [, methodStr, path] = specificMatch;
@@ -67,7 +67,7 @@ export class SpringAdapter implements Adapter {
 
     // Also match no-arg form: @GetMapping or @GetMapping() without path
     const simpleSpecificMatch = trimmed.match(
-      /@(Get|Post|Put|Delete|Patch)Mapping\s*(?:\(\s*\))?\s*$/,
+      /@(Get|Post|Put|Delete|Patch|Head|Options)Mapping\s*(?:\(\s*\))?\s*$/,
     );
     if (simpleSpecificMatch) {
       const [, methodStr] = simpleSpecificMatch;

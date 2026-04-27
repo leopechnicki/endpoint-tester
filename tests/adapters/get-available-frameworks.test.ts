@@ -11,11 +11,14 @@ describe("getAvailableFrameworks", () => {
     expect(frameworks).toContain(Framework.Spring);
     expect(frameworks).toContain(Framework.Django);
     expect(frameworks).toContain(Framework.Flask);
+    expect(frameworks).toContain(Framework.Fastify);
+    expect(frameworks).toContain(Framework.Koa);
+    expect(frameworks).toContain(Framework.NestJS);
   });
 
-  it("should return exactly 9 built-in frameworks", () => {
+  it("should return exactly 12 built-in frameworks", () => {
     const frameworks = getAvailableFrameworks();
-    expect(frameworks).toHaveLength(9);
+    expect(frameworks).toHaveLength(12);
   });
 
   it("should include all Go frameworks", () => {

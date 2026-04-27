@@ -138,14 +138,21 @@ export class FastAPIAdapter implements Adapter {
 
   private detectRouterPrefixes(source: string): Map<string, string> {
     const prefixes = new Map<string, string>();
+    const lines = source.split("\n");
 
-    // Match: identifier = APIRouter(prefix="/prefix")
-    const routerPattern = /(\w+)\s*=\s*APIRouter\s*\(\s*prefix\s*=\s*['"]([^'"]+)['"]/g;
-    let match: RegExpExecArray | null;
+    for (const line of lines) {
+      // Match: identifier = APIRouter(...)
+      const routerAssign = line.match(/(\w+)\s*=\s*APIRouter\s*\(/);
+      if (!routerAssign) continue;
 
-    while ((match = routerPattern.exec(source)) !== null) {
-      const [, routerName, prefix] = match;
-      prefixes.set(routerName, prefix);
+      const routerName = routerAssign[1];
+
+      // Extract prefix from anywhere in the APIRouter(...) call
+      // Use the full line (handles nested parens like Depends(auth))
+      const prefixMatch = line.match(/prefix\s*=\s*['"]([^'"]+)['"]/);
+      if (prefixMatch) {
+        prefixes.set(routerName, prefixMatch[1]);
+      }
     }
 
     return prefixes;

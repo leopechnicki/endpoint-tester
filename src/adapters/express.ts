@@ -1,4 +1,4 @@
-import type { Adapter, Endpoint, EndpointParam, HttpMethod } from "../types.js";
+import type { Adapter, Endpoint, EndpointParam, EndpointResponse, HttpMethod } from "../types.js";
 import { Framework } from "../types.js";
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options", "all"] as const;
@@ -48,6 +48,9 @@ export class ExpressAdapter implements Adapter {
         endpoints.push(...routeChain);
       }
     }
+
+    // Post-process: infer body fields and query params from handler code
+    this.inferBodyAndQueryFromSource(source, endpoints);
 
     return endpoints;
   }
@@ -201,7 +204,7 @@ export class ExpressAdapter implements Adapter {
     // The regex literal sits between ( / ... / , ) — we capture the content between slashes
     const methodsGroup = HTTP_METHODS.join("|");
     const regexMatch = line.match(
-      new RegExp(`(\\w+)\\.(${methodsGroup})\\s*\\(\\s*\\/(.+)\\/\\s*,`, "i"),
+      new RegExp(`(\\w+)\\.(${methodsGroup})\\s*\\(\\s*\\/([^\\/]*(?:\\\\\\/[^\\/]*)*)\\/\\s*,`, "i"),
     );
     if (!regexMatch) return null;
 
@@ -276,6 +279,139 @@ export class ExpressAdapter implements Adapter {
     }
 
     return params;
+  }
+
+  /**
+   * Infer request body fields from req.body.x / req.body['x'] patterns,
+   * query params from req.query.x / req.query['x'] patterns,
+   * and response fields from res.json({...}) / res.send({...}) patterns.
+   */
+  private inferBodyAndQueryFromSource(source: string, endpoints: Endpoint[]): void {
+    // Find handler blocks: from route definition to next route or end
+    for (const ep of endpoints) {
+      if (!ep.line || !ep.file) continue;
+
+      const lines = source.split("\n");
+      const startLine = ep.line - 1;
+      // Scan up to 50 lines after the route definition to find handler body
+      const endLine = Math.min(startLine + 50, lines.length);
+      const handlerBlock = lines.slice(startLine, endLine).join("\n");
+
+      // Infer body fields from req.body.field or req.body['field'] or destructuring
+      if (ep.method === "POST" || ep.method === "PUT" || ep.method === "PATCH") {
+        const bodyFields = this.inferBodyFields(handlerBlock);
+        if (Object.keys(bodyFields).length > 0) {
+          ep.body = { type: "object", fields: bodyFields };
+        }
+      }
+
+      // Infer query params from req.query.param or req.query['param']
+      const queryParams = this.inferQueryParams(handlerBlock);
+      for (const qp of queryParams) {
+        // Avoid duplicates
+        if (!ep.params.some(p => p.name === qp.name && p.location === "query")) {
+          ep.params.push(qp);
+        }
+      }
+
+      // Infer response fields from res.json({...}) or res.send({...})
+      const responseInfo = this.inferResponseFields(handlerBlock);
+      if (responseInfo) {
+        ep.response = responseInfo;
+      }
+    }
+  }
+
+  private inferBodyFields(handlerBlock: string): Record<string, string> {
+    const fields: Record<string, string> = {};
+
+    // Pattern: req.body.fieldName
+    const dotPattern = /req\.body\.(\w+)/g;
+    let match: RegExpExecArray | null;
+    while ((match = dotPattern.exec(handlerBlock)) !== null) {
+      fields[match[1]] = "string"; // default type
+    }
+
+    // Pattern: req.body['fieldName'] or req.body["fieldName"]
+    const bracketPattern = /req\.body\[['"](\w+)['"]\]/g;
+    while ((match = bracketPattern.exec(handlerBlock)) !== null) {
+      fields[match[1]] = "string";
+    }
+
+    // Pattern: const { field1, field2 } = req.body
+    const destructurePattern = /(?:const|let|var)\s*\{([^}]+)\}\s*=\s*req\.body/g;
+    while ((match = destructurePattern.exec(handlerBlock)) !== null) {
+      const fieldList = match[1].split(",").map(f => f.trim().split(":")[0].split("=")[0].trim());
+      for (const field of fieldList) {
+        if (field && /^\w+$/.test(field)) {
+          fields[field] = "string";
+        }
+      }
+    }
+
+    return fields;
+  }
+
+  private inferQueryParams(handlerBlock: string): EndpointParam[] {
+    const params: EndpointParam[] = [];
+    const seen = new Set<string>();
+
+    // Pattern: req.query.paramName
+    const dotPattern = /req\.query\.(\w+)/g;
+    let match: RegExpExecArray | null;
+    while ((match = dotPattern.exec(handlerBlock)) !== null) {
+      if (!seen.has(match[1])) {
+        seen.add(match[1]);
+        params.push({ name: match[1], location: "query", type: "string" });
+      }
+    }
+
+    // Pattern: req.query['paramName']
+    const bracketPattern = /req\.query\[['"](\w+)['"]\]/g;
+    while ((match = bracketPattern.exec(handlerBlock)) !== null) {
+      if (!seen.has(match[1])) {
+        seen.add(match[1]);
+        params.push({ name: match[1], location: "query", type: "string" });
+      }
+    }
+
+    // Pattern: const { param1, param2 } = req.query
+    const destructurePattern = /(?:const|let|var)\s*\{([^}]+)\}\s*=\s*req\.query/g;
+    while ((match = destructurePattern.exec(handlerBlock)) !== null) {
+      const fieldList = match[1].split(",").map(f => f.trim().split(":")[0].split("=")[0].trim());
+      for (const field of fieldList) {
+        if (field && /^\w+$/.test(field) && !seen.has(field)) {
+          seen.add(field);
+          params.push({ name: field, location: "query", type: "string" });
+        }
+      }
+    }
+
+    return params;
+  }
+
+  private inferResponseFields(handlerBlock: string): EndpointResponse | null {
+    // Pattern: res.json({ field1: ..., field2: ... })
+    const jsonPattern = /res\.(?:json|send)\s*\(\s*\{([^}]*)\}/;
+    const match = handlerBlock.match(jsonPattern);
+    if (!match) return null;
+
+    const fields: Record<string, string> = {};
+    const content = match[1];
+    // Extract key names from object literal
+    const keyPattern = /(\w+)\s*:/g;
+    let keyMatch: RegExpExecArray | null;
+    while ((keyMatch = keyPattern.exec(content)) !== null) {
+      fields[keyMatch[1]] = "string";
+    }
+
+    if (Object.keys(fields).length === 0) return null;
+
+    // Check if response is an array: res.json([...]) or res.json(items)
+    const arrayPattern = /res\.(?:json|send)\s*\(\s*\[/;
+    const isArray = arrayPattern.test(handlerBlock);
+
+    return { fields, isArray };
   }
 
   /**

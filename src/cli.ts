@@ -7,7 +7,7 @@ import { writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import { Scanner } from "./scanner.js";
 import { TestGenerator } from "./generator.js";
 import { getAdapter } from "./adapters/index.js";
-import { Framework } from "./types.js";
+import { Framework, SUPPORTED_FORMATS, type SupportedFormat } from "./types.js";
 import { detectFramework } from "./detect.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -24,11 +24,19 @@ program
   .description("Auto-discover API endpoints and generate comprehensive test suites")
   .version(version);
 
+const VALID_FRAMEWORKS = Object.values(Framework);
+
 /**
  * Resolve the framework — use the explicit flag if provided, otherwise auto-detect.
  */
 async function resolveFramework(directory: string, explicitFramework?: string): Promise<Framework> {
   if (explicitFramework) {
+    if (!VALID_FRAMEWORKS.includes(explicitFramework as Framework)) {
+      console.error(
+        `Invalid --framework: "${explicitFramework}". Must be one of: ${VALID_FRAMEWORKS.join(", ")}.`,
+      );
+      process.exit(1);
+    }
     return explicitFramework as Framework;
   }
 
@@ -39,7 +47,7 @@ async function resolveFramework(directory: string, explicitFramework?: string): 
   }
 
   console.log("Could not auto-detect framework. Defaulting to express.");
-  console.log("Hint: use --framework to specify explicitly (express, fastapi, spring, django, flask, gin, echo, chi, nethttp)");
+  console.log("Hint: use --framework to specify explicitly (express, fastapi, spring, django, flask, fastify, koa, nestjs, gin, echo, chi, nethttp)");
   return Framework.Express;
 }
 
@@ -49,7 +57,7 @@ program
   .argument("<directory>", "Directory to scan")
   .option(
     "-f, --framework <framework>",
-    "Framework to scan for (express, fastapi, spring, django, flask, gin, echo, chi, nethttp)",
+    "Framework to scan for (express, fastapi, spring, django, flask, fastify, koa, nestjs, gin, echo, chi, nethttp)",
   )
   .option("-o, --output <file>", "Output file for results (JSON)")
   .action(async (directory: string, options: { framework?: string; output?: string }) => {
@@ -73,8 +81,10 @@ program
     }
 
     if (options.output) {
-      writeFileSync(options.output, JSON.stringify(endpoints, null, 2));
-      console.log(`\nResults written to ${options.output}`);
+      const outPath = resolve(options.output);
+      mkdirSync(dirname(outPath), { recursive: true });
+      writeFileSync(outPath, JSON.stringify(endpoints, null, 2));
+      console.log(`\nResults written to ${outPath}`);
     }
   });
 
@@ -84,7 +94,7 @@ program
   .argument("<directory>", "Directory to scan for endpoints")
   .option(
     "-f, --framework <framework>",
-    "Framework to scan for (express, fastapi, spring, django, flask, gin, echo, chi, nethttp)",
+    "Framework to scan for (express, fastapi, spring, django, flask, fastify, koa, nestjs, gin, echo, chi, nethttp)",
   )
   .option(
     "-o, --output <path>",
@@ -103,6 +113,21 @@ program
         baseUrl: string;
       },
     ) => {
+      try {
+        new URL(options.baseUrl);
+      } catch {
+        console.error(`Invalid --base-url: "${options.baseUrl}" is not a valid URL.`);
+        process.exit(1);
+      }
+
+      const validFormats: readonly string[] = SUPPORTED_FORMATS;
+      if (!validFormats.includes(options.format)) {
+        console.error(
+          `Invalid --format: "${options.format}". Must be one of: ${validFormats.join(", ")}.`,
+        );
+        process.exit(1);
+      }
+
       const dir = resolve(directory);
       const framework = await resolveFramework(dir, options.framework);
       const adapter = getAdapter(framework);
@@ -126,7 +151,7 @@ program
       const testContent = generator.generate({
         endpoints,
         output: options.output,
-        format: options.format as "vitest" | "jest" | "pytest" | "go",
+        format: options.format as SupportedFormat,
         baseUrl: options.baseUrl,
       });
 

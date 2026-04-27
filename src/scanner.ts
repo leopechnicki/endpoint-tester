@@ -42,7 +42,18 @@ export class Scanner {
       endpoints.push(...found);
     }
 
-    return endpoints;
+    // Deduplicate by HTTP method + path — the same route may be detected
+    // by multiple regex patterns or defined in more than one file.
+    const seen = new Set<string>();
+    const unique: Endpoint[] = [];
+    for (const ep of endpoints) {
+      const key = `${ep.method.toUpperCase()}:${ep.path}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(ep);
+      }
+    }
+    return unique;
   }
 
   /**

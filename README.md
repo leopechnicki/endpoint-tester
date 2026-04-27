@@ -27,19 +27,19 @@ Every API project needs endpoint tests. Writing them is tedious, repetitive, and
 ```
 Source code in  -->  [endpoint-tester]  -->  Test suite out
   Express                                     Vitest / Jest
-  FastAPI                                     Pytest
-  Spring Boot
-  Flask
-  Django
-  Fastify
+  Fastify                                     Pytest
   Koa
   NestJS
+  FastAPI
+  Flask
+  Django
+  Spring Boot
 ```
 
 ## Features
 
 - **Auto-detection** -- Detects your framework automatically from package.json, requirements.txt, pom.xml, or source imports. No config needed.
-- **8 framework adapters** -- Express.js, FastAPI, Spring Boot, Flask, Django, Fastify, Koa, NestJS. Extensible for any framework via the Adapter interface.
+- **12 framework adapters** -- Express.js, Fastify, Koa, NestJS, FastAPI, Flask, Django, Spring Boot, Gin, Echo, Chi, net/http. Extensible for any framework via the Adapter interface.
 - **3 test formats** -- Vitest, Jest, Pytest. Generated tests include status code assertions, auth header tests, error response tests, and boundary value tests.
 - **Smart route parsing** -- Handles router prefixes, middleware chains, `app.route()` chaining, multi-line decorators, class-level annotations, Blueprints, and more.
 - **Zero config** -- Works out of the box. One command, one output.
@@ -110,7 +110,7 @@ Running `endpoint-tester generate ./src --format vitest` generates a complete te
 
 | Option | Description | Default |
 |---|---|---|
-| `--framework` / `-f` | Framework adapter (express, fastapi, spring, django, flask, fastify, koa, nestjs). Auto-detected if omitted. | auto-detect |
+| `--framework` / `-f` | Framework adapter (express, fastapi, spring, django, flask, fastify, koa, nestjs, gin, echo, chi, nethttp). Auto-detected if omitted. | auto-detect |
 | `--output` / `-o` | Output path -- directory or file path | `./generated-tests` |
 | `--format` | Test format (vitest, jest, pytest) | `vitest` |
 | `--base-url` | Base URL for test requests | `http://localhost:3000` |
@@ -120,13 +120,17 @@ Running `endpoint-tester generate ./src --format vitest` generates a complete te
 | Framework | Patterns detected |
 |---|---|
 | **Express.js** | `app.get()`, `router.post()`, `app.route().get().post()`, route params, router prefixes via `app.use()` and `router.use()`, middleware chains |
+| **Fastify** | `fastify.get()`, `fastify.route({ method, url, handler })`, shorthand method registrations |
+| **Koa** | `@koa/router` with `router.get()` / `router.post()`, route params, `router.prefix()` |
+| **NestJS** | `@Controller('prefix')` + method decorators (`@Get`, `@Post`, ...), `@Param`, `@Query`, `@Body` DTO inference |
 | **FastAPI** | `@app.get()`, `@router.post()`, `APIRouter` prefixes, `{param}` parameters, multi-line decorators with kwargs |
-| **Spring Boot** | `@GetMapping`, `@PostMapping`, `@RequestMapping` (both argument orderings), class-level `@RequestMapping` prefix, `@PathVariable`, multiline annotations, Kotlin `fun` syntax |
 | **Flask** | `@app.route()` with methods list, `@app.get()` shorthand, `Blueprint` url_prefix, typed parameters (`<int:id>`) |
 | **Django** | `path()`, `re_path()`, typed parameters (`<int:pk>`), regex named groups |
-| **Fastify** | `fastify.get()`, `fastify.route({ method, url })`, `server.register()` prefixes, schema options, route params |
-| **Koa** | `router.get()`, `router.post()`, `router.prefix()`, route params, middleware chains, `router.all()` |
-| **NestJS** | `@Get()`, `@Post()`, `@Controller()` prefix, `@Param()`, `@Query()`, `@Body()` decorators, route params |
+| **Spring Boot** | `@GetMapping`, `@PostMapping`, `@RequestMapping` (both argument orderings), class-level `@RequestMapping` prefix, `@PathVariable`, multiline annotations, Kotlin `fun` syntax |
+| **Gin** | `r.GET()`, `r.POST()`, `router.Group()` prefixes, route params (`:id`), `gin.Default()` and `gin.New()` |
+| **Echo** | `e.GET()`, `e.POST()`, `e.Group()` prefixes, route params (`:id`), `echo.New()` |
+| **Chi** | `r.Get()`, `r.Post()`, `r.Route()`, `r.Mount()` prefixes, route params (`{id}`) |
+| **net/http** | `http.HandleFunc()`, `mux.HandleFunc()`, `http.Handle()`, route params (custom patterns) |
 
 ## Test formats
 
@@ -149,6 +153,7 @@ import { Scanner, TestGenerator, getAdapter, detectFramework } from "endpoint-te
 
 // Auto-detect the framework
 const detected = await detectFramework("./src");
+if (!detected) throw new Error("Could not detect framework");
 const adapter = getAdapter(detected.framework);
 
 // Scan for endpoints
@@ -196,21 +201,71 @@ registerAdapter(new HonoAdapter());
 | **Multi-framework** | 8 built-in | N/A | Framework-agnostic |
 | **CI friendly** | CLI output | Already in repo | Needs Newman |
 
-## Contributing
+## Development
 
-Contributions are welcome. Areas with the most impact:
+### Prerequisites
 
-- New framework adapters (Hono, Gin, Actix, etc.)
-- Smarter body inference from type annotations
-- OpenAPI/Swagger output format
-- Watch mode for continuous test generation
+- Node.js >= 20
+- npm
+
+### Setup
 
 ```bash
 git clone https://github.com/leopechnicki/endpoint-tester.git
 cd endpoint-tester
 npm install
-npm test
 ```
+
+### Commands
+
+```bash
+npm run build    # Compile TypeScript to dist/
+npm test         # Run tests with vitest
+npm run lint     # Lint with ESLint
+npm run dev      # Watch mode (tsc --watch)
+```
+
+### Library usage (programmatic API)
+
+Install as a dependency:
+
+```bash
+npm install endpoint-tester
+```
+
+Import types and classes:
+
+```typescript
+import {
+  Scanner,
+  TestGenerator,
+  getAdapter,
+  registerAdapter,
+  detectFramework,
+  Framework,
+  type Adapter,
+  type Endpoint,
+  type EndpointParam,
+  type EndpointBody,
+  type HttpMethod,
+  type ScanOptions,
+  type GenerateOptions,
+} from "endpoint-tester";
+```
+
+## Contributing
+
+Contributions are welcome. Areas with the most impact:
+
+- New framework adapters (Hono, Gin, Actix, Laravel, etc.)
+- Smarter body inference from type annotations
+- OpenAPI/Swagger output format
+- Watch mode for continuous test generation
+
+Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)
+(`feat:`, `fix:`, `chore:`, ...). Releases are cut automatically by
+[release-please](https://github.com/googleapis/release-please-action)
+based on the commit history.
 
 ## License
 

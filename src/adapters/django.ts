@@ -184,20 +184,31 @@ export class DjangoAdapter implements Adapter {
     for (let i = 0; i < lines.length; i++) {
       // Detect class-based views (APIView, View, MethodView, ViewSet, etc.)
       const classMatch = lines[i].match(
-        /^class\s+(\w+)\s*\(.*(?:View|ViewSet|Mixin).*\)/,
+        /^class\s+(\w+)\s*\(([^)]*(?:View|ViewSet|Mixin)[^)]*)\)/,
       );
       if (classMatch) {
         const className = classMatch[1];
+        const bases = classMatch[2];
         const methods: HttpMethod[] = [];
 
         for (let j = i + 1; j < lines.length; j++) {
           if (lines[j].match(/^\S/) && lines[j].trim() !== "") break;
           const defMatch = lines[j].match(
-            /^\s+(?:async\s+)?def\s+(get|post|put|delete|patch|head|options)\s*\(\s*self/i,
+            /^\s+(?:async\s+)?def\s+(get|post|put|delete|patch|head|options|list|create|retrieve|update|partial_update|destroy)\s*\(\s*self/i,
           );
           if (defMatch) {
-            methods.push(defMatch[1].toUpperCase() as HttpMethod);
+            const methodName = defMatch[1].toLowerCase();
+            const mapped = this.mapViewSetMethodToHttp(methodName);
+            if (mapped && !methods.includes(mapped)) {
+              methods.push(mapped);
+            }
           }
+        }
+
+        // If no explicit methods found, infer from base classes
+        if (methods.length === 0) {
+          const inferredFromBases = this.inferMethodsFromBases(bases);
+          methods.push(...inferredFromBases);
         }
 
         if (methods.length > 0) {
@@ -229,6 +240,55 @@ export class DjangoAdapter implements Adapter {
     }
 
     return views;
+  }
+
+  private mapViewSetMethodToHttp(methodName: string): HttpMethod | null {
+    const map: Record<string, HttpMethod> = {
+      get: "GET",
+      post: "POST",
+      put: "PUT",
+      delete: "DELETE",
+      patch: "PATCH",
+      head: "HEAD",
+      options: "OPTIONS",
+      list: "GET",
+      create: "POST",
+      retrieve: "GET",
+      update: "PUT",
+      partial_update: "PATCH",
+      destroy: "DELETE",
+    };
+    return map[methodName] ?? null;
+  }
+
+  private inferMethodsFromBases(bases: string): HttpMethod[] {
+    const basesLower = bases.toLowerCase();
+
+    // ReadOnlyModelViewSet must be checked before ModelViewSet
+    if (basesLower.includes("readonlymodelviewset")) {
+      return ["GET"];
+    }
+    // ModelViewSet = full CRUD
+    if (basesLower.includes("modelviewset")) {
+      return ["GET", "POST", "PUT", "PATCH", "DELETE"];
+    }
+
+    const methods: HttpMethod[] = [];
+    // DRF mixin class names: CreateModelMixin, ListModelMixin, etc.
+    if (basesLower.includes("createmodelmixin") || basesLower.includes("createapiview")) {
+      methods.push("POST");
+    }
+    if (basesLower.includes("listmodelmixin") || basesLower.includes("retrievemodelmixin") || basesLower.includes("listapiview") || basesLower.includes("retrieveapiview")) {
+      if (!methods.includes("GET")) methods.push("GET");
+    }
+    if (basesLower.includes("updatemodelmixin") || basesLower.includes("updateapiview")) {
+      methods.push("PUT");
+      methods.push("PATCH");
+    }
+    if (basesLower.includes("destroymodelmixin") || basesLower.includes("destroyapiview")) {
+      methods.push("DELETE");
+    }
+    return methods;
   }
 
   private mapDjangoType(djangoType: string): string {
