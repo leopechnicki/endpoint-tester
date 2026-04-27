@@ -23,7 +23,8 @@
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
     "prepare": "npm run build",
-    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\""
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "ci": "npm run typecheck && npm run lint && npm test && npm run build"
   },
   "dependencies": {
     "commander": "^14.0.0",
