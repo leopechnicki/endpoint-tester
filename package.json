@@ -21,7 +21,6 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "dev": "tsc --watch",
-    "typecheck": "tsc --noEmit",
     "prepare": "npm run build",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\""
   },
@@ -35,7 +34,7 @@
     "prettier": "^3.3.0",
     "typescript": "^5.5.0",
     "typescript-eslint": "^8.58.2",
-    "vitest": "^2.0.0"
+    "vitest": "^4.1.0"
   },
   "license": "MIT",
   "keywords": [
