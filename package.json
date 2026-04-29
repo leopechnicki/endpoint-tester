@@ -21,9 +21,10 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "dev": "tsc --watch",
-    "typecheck": "tsc --noEmit",
     "prepare": "npm run build",
-    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\""
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "ci": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run build"
   },
   "dependencies": {
     "commander": "^14.0.0",
