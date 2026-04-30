@@ -21,7 +21,6 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "dev": "tsc --watch",
-    "typecheck": "tsc --noEmit",
     "prepare": "npm run build",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\""
   },
