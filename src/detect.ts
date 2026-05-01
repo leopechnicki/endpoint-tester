@@ -26,7 +26,8 @@ function warnOnReadError(path: string, err: unknown): void {
  *   1. Check package.json dependencies (JS/TS projects)
  *   2. Check requirements.txt / pyproject.toml / setup.py (Python projects)
  *   3. Check pom.xml / build.gradle (Java/Kotlin projects)
- *   4. Fall back to file pattern scanning
+ *   4. Check go.mod (Go projects)
+ *   5. Fall back to file pattern scanning
  */
 export async function detectFramework(directory: string): Promise<DetectionResult | null> {
   // Strategy 1: package.json (JS/TS)
@@ -41,11 +42,11 @@ export async function detectFramework(directory: string): Promise<DetectionResul
   const javaResult = detectFromJavaBuild(directory);
   if (javaResult) return javaResult;
 
-  // Strategy 3b: Go module file
+  // Strategy 4: Go module file
   const goResult = detectFromGoMod(directory);
   if (goResult) return goResult;
 
-  // Strategy 4: File pattern scanning (fallback)
+  // Strategy 5: File pattern scanning (fallback)
   const patternResult = await detectFromFilePatterns(directory);
   if (patternResult) return patternResult;
 
