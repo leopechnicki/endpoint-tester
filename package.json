@@ -1,6 +1,6 @@
 {
   "name": "endpoint-tester",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Auto-discover API endpoints and generate comprehensive test suites",
   "type": "module",
   "main": "dist/index.js",
@@ -21,7 +21,6 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "dev": "tsc --watch",
-    "typecheck": "tsc --noEmit",
     "prepare": "npm run build",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\""
   },
