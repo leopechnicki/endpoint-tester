@@ -151,6 +151,45 @@ def health():
       expect(exitCode).toBe(0);
       expect(stdout).toContain("Found 0 endpoint(s)");
     });
+
+    it("should show source file path in --verbose mode", () => {
+      setupProject({
+        "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
+        "src/app.ts": `
+import express from "express";
+const app = express();
+app.get('/users', getUsers);
+app.post('/users', createUser);
+`,
+      });
+
+      const { stdout, exitCode } = runCli(["scan", TEST_DIR, "--verbose"]);
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain("/users");
+      expect(stdout).toContain("app.ts");
+    });
+
+    it("should not show file paths in default (non-verbose) mode", () => {
+      setupProject({
+        "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
+        "src/app.ts": `
+import express from "express";
+const app = express();
+app.get('/users', getUsers);
+`,
+      });
+
+      const { stdout, exitCode } = runCli(["scan", TEST_DIR]);
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain("/users");
+      expect(stdout).not.toContain("app.ts");
+    });
+
+    it("--verbose flag should be shown in scan --help", () => {
+      const { stdout, exitCode } = runCli(["scan", "--help"]);
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain("--verbose");
+    });
   });
 
   describe("generate command", () => {
@@ -187,7 +226,7 @@ app.post('/users', createUser);
         "app.ts": `app.get('/users', getUsers);`,
       });
 
-      // console.error() writes to stderr � verify the helper captures it correctly
+      // console.error() writes to stderr — verify the helper captures it correctly
       const { stdout, stderr, exitCode } = runCli(["generate", TEST_DIR, "--format", "mocha"]);
       expect(exitCode).toBe(1);
       // The error message goes to stderr (console.error); verify it is captured there
