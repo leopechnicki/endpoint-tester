@@ -60,8 +60,9 @@ program
     "Framework to scan for (express, fastapi, spring, django, flask, fastify, koa, nestjs, gin, echo, chi, nethttp)",
   )
   .option("-o, --output <file>", "Output file for results (JSON)")
-  .option("-e, --exclude <patterns...>", "Glob patterns to exclude (repeatable, e.g. --exclude legacy/** test/**)")
-  .action(async (directory: string, options: { framework?: string; output?: string; exclude?: string[] }) => {
+  .option("-e, --exclude <patterns...>", "Glob patterns to exclude (repeatable, e.g. --exclude legacy/** test/**)")  
+  .option("-v, --verbose", "Show source file and line number for each endpoint")
+  .action(async (directory: string, options: { framework?: string; output?: string; exclude?: string[]; verbose?: boolean }) => {
     const dir = resolve(directory);
     const framework = await resolveFramework(dir, options.framework);
     const adapter = getAdapter(framework);
@@ -80,6 +81,10 @@ program
     for (const ep of endpoints) {
       const params = ep.params.length > 0 ? ` [params: ${ep.params.map((p) => p.name).join(", ")}]` : "";
       console.log(`  ${ep.method.padEnd(7)} ${ep.path}${params}`);
+      if (options.verbose && ep.file) {
+        const loc = ep.line !== undefined ? `${ep.file}:${ep.line}` : ep.file;
+        console.log(`           ${loc}`);
+      }
     }
 
     if (options.output) {
