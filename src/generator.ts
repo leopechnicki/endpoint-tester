@@ -394,8 +394,7 @@ export class TestGenerator {
   }
 
   private buildGoTestPath(ep: Endpoint): string {
-    // Replace :param with a test value
-    return ep.path.replace(/:(\w+)/g, "test-$1");
+    return ep.path.replace(/:([\w]+)/g, "test-$1");
   }
 
   private toGoFuncName(ep: Endpoint): string {
@@ -404,11 +403,10 @@ export class TestGenerator {
       .replace(/^_+|_+$/g, "")
       .replace(/_+/g, "_");
     const methodPart = ep.method.charAt(0).toUpperCase() + ep.method.slice(1).toLowerCase();
-    return `Test${methodPart}_${pathPart}`;
+    return `Test${methodPart}_${pathPart || "Root"}`;
   }
 
   private toGoMethodName(method: HttpMethod): string {
-    // http.MethodGet, http.MethodPost, etc.
     return method.charAt(0).toUpperCase() + method.slice(1).toLowerCase();
   }
 
@@ -483,11 +481,7 @@ export class TestGenerator {
     }
   }
 
-  /**
-   * Response schema validation: checks content-type, valid JSON, and known fields.
-   */
   private appendTsResponseSchemaTest(lines: string[], ep: Endpoint): void {
-    // Skip for DELETE/HEAD/OPTIONS which may not return a body
     if (ep.method === "DELETE" || ep.method === "HEAD" || ep.method === "OPTIONS") return;
 
     const testPath = this.buildTestPath(ep);
@@ -511,7 +505,6 @@ export class TestGenerator {
     lines.push(`    const data = await response.json();`);
     lines.push(`    expect(data).not.toBeNull();`);
 
-    // If we have response field info, validate structure
     if (ep.response?.fields) {
       const fields = Object.keys(ep.response.fields);
       if (ep.response.isArray) {
@@ -532,9 +525,6 @@ export class TestGenerator {
     lines.push(``);
   }
 
-  /**
-   * Smart body tests: test each known field individually (missing field, wrong type).
-   */
   private appendTsSmartBodyTests(lines: string[], ep: Endpoint): void {
     const testPath = this.buildTestPath(ep);
     const safeMethod = escapeForStringLiteral(ep.method);
@@ -545,7 +535,6 @@ export class TestGenerator {
     for (const [fieldName, fieldType] of fields) {
       const safeFieldName = escapeForStringLiteral(fieldName);
 
-      // Test missing required field
       const bodyWithout = this.buildSampleBodyWithout(ep, fieldName);
       lines.push(`  it("${safeMethod} ${safePath} without '${safeFieldName}' should return 4xx", async () => {`);
       lines.push(`    const response = await fetch(\`\${BASE_URL}${safeTestPath}\`, {`);
@@ -559,7 +548,6 @@ export class TestGenerator {
       lines.push(`  });`);
       lines.push(``);
 
-      // Test wrong type
       const wrongVal = fieldType === "number" || fieldType === "integer" ? '"not_a_number"' : "12345";
       const bodyWrong = this.buildSampleBodyWithWrongType(ep, fieldName, wrongVal);
       lines.push(`  it("${safeMethod} ${safePath} with wrong type for '${safeFieldName}' should not 500", async () => {`);
@@ -575,9 +563,6 @@ export class TestGenerator {
     }
   }
 
-  /**
-   * Query parameter tests: test endpoints with query params.
-   */
   private appendTsQueryParamTests(lines: string[], ep: Endpoint): void {
     const queryParams = ep.params.filter((p) => p.location === "query");
     if (queryParams.length === 0) return;
@@ -587,7 +572,6 @@ export class TestGenerator {
     const safePath = escapeForStringLiteral(ep.path);
     const safeTestPath = escapeForStringLiteral(testPath);
 
-    // Test with all query params provided
     const paramStr = queryParams.map(p => `${p.name}=test`).join("&");
     lines.push(`  it("${safeMethod} ${safePath} with query params should not 500", async () => {`);
     lines.push(`    const response = await fetch(\`\${BASE_URL}${safeTestPath}?${escapeForStringLiteral(paramStr)}\`, {`);
@@ -598,7 +582,6 @@ export class TestGenerator {
     lines.push(`  });`);
     lines.push(``);
 
-    // Test without required query params (should get 4xx)
     for (const param of queryParams.filter(p => p.required)) {
       const safeParamName = escapeForStringLiteral(param.name);
       const otherParams = queryParams
@@ -618,13 +601,12 @@ export class TestGenerator {
       lines.push(``);
     }
 
-    // Test with boundary query param values
     for (const param of queryParams) {
       const paramType = param.type ?? "string";
       const values = QUERY_PARAM_VALUES[paramType] ?? QUERY_PARAM_VALUES["string"];
 
       for (const val of values) {
-        if (val === "test") continue; // skip default
+        if (val === "test") continue;
         const safeParamName = escapeForStringLiteral(param.name);
         const safeVal = escapeForStringLiteral(val);
         const otherParams = queryParams
@@ -647,16 +629,12 @@ export class TestGenerator {
     }
   }
 
-  /**
-   * Enhanced auth tests: valid token, no token, and malformed token.
-   */
   private appendTsAuthTests(lines: string[], ep: Endpoint): void {
     const testPath = this.buildTestPath(ep);
     const safeMethod = escapeForStringLiteral(ep.method);
     const safePath = escapeForStringLiteral(ep.path);
     const safeTestPath = escapeForStringLiteral(testPath);
 
-    // Test with valid Bearer token
     lines.push(`  it("${safeMethod} ${safePath} with auth header should not 500", async () => {`);
     lines.push(`    const response = await fetch(\`\${BASE_URL}${safeTestPath}\`, {`);
     lines.push(`      method: "${safeMethod}",`);
@@ -674,7 +652,6 @@ export class TestGenerator {
     lines.push(`  });`);
     lines.push(``);
 
-    // Test without auth header
     lines.push(`  it("${safeMethod} ${safePath} without auth should not 500", async () => {`);
     lines.push(`    const response = await fetch(\`\${BASE_URL}${safeTestPath}\`, {`);
     lines.push(`      method: "${safeMethod}",`);
@@ -690,7 +667,6 @@ export class TestGenerator {
     lines.push(`  });`);
     lines.push(``);
 
-    // Test with malformed auth token
     lines.push(`  it("${safeMethod} ${safePath} with invalid auth should not 500", async () => {`);
     lines.push(`    const response = await fetch(\`\${BASE_URL}${safeTestPath}\`, {`);
     lines.push(`      method: "${safeMethod}",`);
@@ -727,9 +703,6 @@ export class TestGenerator {
     return "{}";
   }
 
-  /**
-   * Build sample body with one field omitted (for missing-field tests).
-   */
   private buildSampleBodyWithout(ep: Endpoint, omitField: string): string {
     if (!ep.body?.fields) return "{}";
     const entries = Object.entries(ep.body.fields)
@@ -741,9 +714,6 @@ export class TestGenerator {
     return entries.length > 0 ? `{ ${entries.join(", ")} }` : "{}";
   }
 
-  /**
-   * Build sample body with one field set to a wrong type value.
-   */
   private buildSampleBodyWithWrongType(ep: Endpoint, targetField: string, wrongValue: string): string {
     if (!ep.body?.fields) return "{}";
     const entries = Object.entries(ep.body.fields).map(([key, type]) => {
@@ -756,9 +726,6 @@ export class TestGenerator {
     return `{ ${entries.join(", ")} }`;
   }
 
-  /**
-   * Generate a sample value for a given type.
-   */
   private sampleValueForType(type: string, fieldName: string): string {
     switch (type) {
       case "number":
@@ -778,9 +745,6 @@ export class TestGenerator {
     }
   }
 
-  /**
-   * Build a Python dict body.
-   */
   private buildPythonBody(ep: Endpoint): string {
     if (ep.body?.fields && Object.keys(ep.body.fields).length > 0) {
       const entries = Object.entries(ep.body.fields).map(([key, type]) => {
@@ -829,7 +793,7 @@ export class TestGenerator {
   }
 
   private buildTestPath(ep: Endpoint): string {
-    return ep.path.replace(/:(\w+)/g, "test-$1");
+    return ep.path.replace(/:([\w]+)/g, "test-$1");
   }
 
   private groupByPrefix(endpoints: Endpoint[]): Record<string, Endpoint[]> {
@@ -860,7 +824,6 @@ export class TestGenerator {
       .replace(/_+/g, "_")
       .replace(/^_+|_+$/g, "")
       .replace(/^(\d)/, "_$1");
-    // Ensure pytest discovers the function by requiring a test_ prefix
     return sanitized.startsWith("test_") ? sanitized : `test_${sanitized}`;
   }
 }
