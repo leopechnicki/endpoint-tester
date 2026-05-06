@@ -60,7 +60,8 @@ program
     "Framework to scan for (express, fastapi, spring, django, flask, fastify, koa, nestjs, gin, echo, chi, nethttp)",
   )
   .option("-o, --output <file>", "Output file for results (JSON)")
-  .action(async (directory: string, options: { framework?: string; output?: string }) => {
+  .option("-e, --exclude <patterns...>", "Glob patterns to exclude (repeatable, e.g. --exclude legacy/** test/**)")
+  .action(async (directory: string, options: { framework?: string; output?: string; exclude?: string[] }) => {
     const dir = resolve(directory);
     const framework = await resolveFramework(dir, options.framework);
     const adapter = getAdapter(framework);
@@ -71,6 +72,7 @@ program
     const endpoints = await scanner.scan({
       directory: dir,
       framework,
+      exclude: options.exclude,
     });
 
     console.log(`Found ${endpoints.length} endpoint(s):\n`);
@@ -103,6 +105,7 @@ program
   )
   .option("--format <format>", "Test format (vitest, jest, pytest, go)", "vitest")
   .option("--base-url <url>", "Base URL for tests", "http://localhost:3000")
+  .option("-e, --exclude <patterns...>", "Glob patterns to exclude (repeatable, e.g. --exclude legacy/** test/**)")
   .action(
     async (
       directory: string,
@@ -111,6 +114,7 @@ program
         output: string;
         format: string;
         baseUrl: string;
+        exclude?: string[];
       },
     ) => {
       try {
@@ -138,6 +142,7 @@ program
       const endpoints = await scanner.scan({
         directory: dir,
         framework,
+        exclude: options.exclude,
       });
 
       if (endpoints.length === 0) {
