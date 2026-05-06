@@ -187,7 +187,7 @@ app.post('/users', createUser);
         "app.ts": `app.get('/users', getUsers);`,
       });
 
-      // console.error() writes to stderr — verify the helper captures it correctly
+      // console.error() writes to stderr ï¿½ verify the helper captures it correctly
       const { stdout, stderr, exitCode } = runCli(["generate", TEST_DIR, "--format", "mocha"]);
       expect(exitCode).toBe(1);
       // The error message goes to stderr (console.error); verify it is captured there
@@ -219,6 +219,75 @@ app.post('/users', createUser);
       expect(exitCode).toBe(1);
       expect(stderr).toContain("Invalid --framework");
       expect(stderr).toContain("rails");
+    });
+  });
+
+  describe("--exclude option", () => {
+    it("scan --exclude skips matching directories", () => {
+      setupProject({
+        "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
+        "src/app.ts": `app.get('/users', getUsers);`,
+        "legacy/old.ts": `app.get('/legacy', oldHandler);`,
+      });
+
+      const { stdout, exitCode } = runCli([
+        "scan", TEST_DIR,
+        "--framework", "express",
+        "--exclude", "legacy/**",
+      ]);
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain("/users");
+      expect(stdout).not.toContain("/legacy");
+    });
+
+    it("scan --exclude accepts multiple patterns", () => {
+      setupProject({
+        "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
+        "src/app.ts": `app.get('/api', apiHandler);`,
+        "test/routes.ts": `app.get('/test-route', testHandler);`,
+        "scripts/gen.ts": `app.get('/gen', genHandler);`,
+      });
+
+      const { stdout, exitCode } = runCli([
+        "scan", TEST_DIR,
+        "--framework", "express",
+        "--exclude", "test/**",
+        "--exclude", "scripts/**",
+      ]);
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain("/api");
+      expect(stdout).not.toContain("/test-route");
+      expect(stdout).not.toContain("/gen");
+    });
+
+    it("generate --exclude skips matching directories", () => {
+      setupProject({
+        "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
+        "src/app.ts": `app.get('/users', getUsers);`,
+        "legacy/old.ts": `app.get('/legacy', oldHandler);`,
+      });
+
+      const outputDir = join(TEST_DIR, "generated");
+      const { stdout, exitCode } = runCli([
+        "generate", TEST_DIR,
+        "--framework", "express",
+        "--output", outputDir,
+        "--exclude", "legacy/**",
+      ]);
+      expect(exitCode).toBe(0);
+      const content = readFileSync(join(outputDir, "endpoints.test.ts"), "utf-8");
+      expect(content).toContain("/users");
+      expect(content).not.toContain("/legacy");
+    });
+
+    it("scan --help mentions --exclude", () => {
+      const { stdout } = runCli(["scan", "--help"]);
+      expect(stdout).toContain("--exclude");
+    });
+
+    it("generate --help mentions --exclude", () => {
+      const { stdout } = runCli(["generate", "--help"]);
+      expect(stdout).toContain("--exclude");
     });
   });
 });
