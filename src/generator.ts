@@ -395,7 +395,7 @@ export class TestGenerator {
 
   private buildGoTestPath(ep: Endpoint): string {
     // Replace :param with a test value
-    return ep.path.replace(/:(\w+)/g, "test-$1");
+    return ep.path.replace(/:(\ w+)/g, "test-$1");
   }
 
   private toGoFuncName(ep: Endpoint): string {
@@ -404,7 +404,7 @@ export class TestGenerator {
       .replace(/^_+|_+$/g, "")
       .replace(/_+/g, "_");
     const methodPart = ep.method.charAt(0).toUpperCase() + ep.method.slice(1).toLowerCase();
-    return `Test${methodPart}_${pathPart}`;
+    return `Test${methodPart}_${pathPart || "Root"}`;
   }
 
   private toGoMethodName(method: HttpMethod): string {
@@ -829,7 +829,7 @@ export class TestGenerator {
   }
 
   private buildTestPath(ep: Endpoint): string {
-    return ep.path.replace(/:(\w+)/g, "test-$1");
+    return ep.path.replace(/:(\ w+)/g, "test-$1");
   }
 
   private groupByPrefix(endpoints: Endpoint[]): Record<string, Endpoint[]> {
