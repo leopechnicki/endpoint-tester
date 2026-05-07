@@ -210,7 +210,8 @@ function detectFromGoMod(directory: string): DetectionResult | null {
 
     // go.mod exists but no known framework — assume net/http
     return { framework: Framework.NetHttp, confidence: "medium", reason: "go.mod present, no known router dependency" };
-  } catch {
+  } catch (err) {
+    warnOnReadError(goModPath, err);
     return null;
   }
 }
