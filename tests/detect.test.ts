@@ -103,6 +103,59 @@ describe("detectFramework", () => {
     });
   });
 
+  describe("Go module detection", () => {
+    it("should detect Gin from go.mod", async () => {
+      setupDir({
+        "go.mod": "module myapp\n\ngo 1.21\n\nrequire (\n\tgithub.com/gin-gonic/gin v1.9.0\n)\n",
+      });
+      const result = await detectFramework(TEST_DIR);
+      expect(result).not.toBeNull();
+      expect(result!.framework).toBe("gin");
+      expect(result!.confidence).toBe("high");
+      expect(result!.reason).toContain("go.mod");
+    });
+
+    it("should detect Echo from go.mod", async () => {
+      setupDir({
+        "go.mod": "module myapp\n\ngo 1.21\n\nrequire (\n\tgithub.com/labstack/echo v3.3.10+incompatible\n)\n",
+      });
+      const result = await detectFramework(TEST_DIR);
+      expect(result).not.toBeNull();
+      expect(result!.framework).toBe("echo");
+      expect(result!.confidence).toBe("high");
+    });
+
+    it("should detect Chi from go.mod", async () => {
+      setupDir({
+        "go.mod": "module myapp\n\ngo 1.21\n\nrequire (\n\tgithub.com/go-chi/chi v1.5.4\n)\n",
+      });
+      const result = await detectFramework(TEST_DIR);
+      expect(result).not.toBeNull();
+      expect(result!.framework).toBe("chi");
+      expect(result!.confidence).toBe("high");
+    });
+
+    it("should default to nethttp when go.mod has no known router dependency", async () => {
+      setupDir({
+        "go.mod": "module myapp\n\ngo 1.21\n\nrequire (\n\tgolang.org/x/crypto v0.14.0\n)\n",
+      });
+      const result = await detectFramework(TEST_DIR);
+      expect(result).not.toBeNull();
+      expect(result!.framework).toBe("nethttp");
+      expect(result!.confidence).toBe("medium");
+      expect(result!.reason).toContain("no known router");
+    });
+
+    it("should return null when no go.mod is present", async () => {
+      setupDir({
+        "main.go": "package main\n\nfunc main() {}\n",
+      });
+      // no go.mod — falls through to file pattern scan, which won't match plain main()
+      const result = await detectFramework(TEST_DIR);
+      expect(result).toBeNull();
+    });
+  });
+
   describe("file pattern detection (fallback)", () => {
     it("should detect Express from import statements", async () => {
       setupDir({
