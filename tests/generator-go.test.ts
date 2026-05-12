@@ -69,4 +69,74 @@ describe("TestGenerator — Go format", () => {
     expect(output).toContain("func TestGet_Root(t *testing.T)");
     expect(output).toContain("func TestPost_Root(t *testing.T)");
   });
+
+  it("generates empty body test for POST endpoints", () => {
+    const endpoints: Endpoint[] = [
+      { method: "POST", path: "/users", handler: "createUser", params: [] },
+    ];
+    const output = generator.generate({
+      endpoints,
+      output: "endpoint_test.go",
+      format: "go",
+    });
+    expect(output).toContain("func TestPost_users_EmptyBody(t *testing.T)");
+    expect(output).toContain("expected 4xx for empty body");
+  });
+
+  it("generates invalid auth test for all endpoints", () => {
+    const endpoints: Endpoint[] = [
+      { method: "GET", path: "/users", handler: "getUsers", params: [] },
+    ];
+    const output = generator.generate({
+      endpoints,
+      output: "endpoint_test.go",
+      format: "go",
+    });
+    expect(output).toContain("func TestGet_users_WithInvalidAuth(t *testing.T)");
+    expect(output).toContain("InvalidTokenFormat");
+  });
+
+  it("generates boundary tests for path params", () => {
+    const endpoints: Endpoint[] = [
+      {
+        method: "GET",
+        path: "/users/:id",
+        handler: "getUser",
+        params: [{ name: "id", location: "path", type: "id" }],
+      },
+    ];
+    const output = generator.generate({
+      endpoints,
+      output: "endpoint_test.go",
+      format: "go",
+    });
+    expect(output).toContain("Boundary_Id");
+    expect(output).toContain("nonexistent");
+  });
+
+  it("includes bytes and json imports when body endpoints are present", () => {
+    const endpoints: Endpoint[] = [
+      { method: "POST", path: "/users", handler: "createUser", params: [] },
+    ];
+    const output = generator.generate({
+      endpoints,
+      output: "endpoint_test.go",
+      format: "go",
+    });
+    expect(output).toContain('"bytes"');
+    expect(output).toContain('"encoding/json"');
+  });
+
+  it("omits bytes and json imports when no body endpoints", () => {
+    const endpoints: Endpoint[] = [
+      { method: "GET", path: "/users", handler: "getUsers", params: [] },
+    ];
+    const output = generator.generate({
+      endpoints,
+      output: "endpoint_test.go",
+      format: "go",
+    });
+    expect(output).not.toContain('"bytes"');
+    expect(output).not.toContain('"encoding/json"');
+  });
 });

@@ -349,6 +349,8 @@ export class TestGenerator {
   }
 
   private generateGo(endpoints: Endpoint[]): string {
+    const hasBodyEndpoints = endpoints.some((ep) => this.hasBody(ep));
+
     const lines: string[] = [
       `package endpoint_test`,
       ``,
@@ -356,19 +358,34 @@ export class TestGenerator {
       `\t"net/http"`,
       `\t"net/http/httptest"`,
       `\t"testing"`,
-      `)`,
-      ``,
     ];
+
+    if (hasBodyEndpoints) {
+      lines.push(`\t"bytes"`);
+      lines.push(`\t"encoding/json"`);
+      lines.push(`\t"strings"`);
+    }
+
+    lines.push(`)`);
+    lines.push(``);
 
     for (const ep of endpoints) {
       const testPath = this.buildGoTestPath(ep);
       const funcName = this.toGoFuncName(ep);
       const expectedStatus = this.getExpectedStatus(ep.method);
       const httpMethod = `http.Method${this.toGoMethodName(ep.method)}`;
+      const hasBody = this.hasBody(ep);
 
       // Main success test
       lines.push(`func ${funcName}(t *testing.T) {`);
-      lines.push(`\treq := httptest.NewRequest(${httpMethod}, "${testPath}", nil)`);
+      if (hasBody) {
+        const bodyLiteral = this.buildGoBodyLiteral(ep);
+        lines.push(`\tbody, _ := json.Marshal(map[string]any{${bodyLiteral}})`);
+        lines.push(`\treq := httptest.NewRequest(${httpMethod}, "${testPath}", bytes.NewReader(body))`);
+        lines.push(`\treq.Header.Set("Content-Type", "application/json")`);
+      } else {
+        lines.push(`\treq := httptest.NewRequest(${httpMethod}, "${testPath}", nil)`);
+      }
       lines.push(`\tw := httptest.NewRecorder()`);
       lines.push(`\t// TODO: wire your router here, e.g.: router.ServeHTTP(w, req)`);
       lines.push(`\tif w.Code != ${expectedStatus} {`);
@@ -379,7 +396,14 @@ export class TestGenerator {
 
       // Auth header test
       lines.push(`func ${funcName}_WithAuth(t *testing.T) {`);
-      lines.push(`\treq := httptest.NewRequest(${httpMethod}, "${testPath}", nil)`);
+      if (hasBody) {
+        const bodyLiteral = this.buildGoBodyLiteral(ep);
+        lines.push(`\tbody, _ := json.Marshal(map[string]any{${bodyLiteral}})`);
+        lines.push(`\treq := httptest.NewRequest(${httpMethod}, "${testPath}", bytes.NewReader(body))`);
+        lines.push(`\treq.Header.Set("Content-Type", "application/json")`);
+      } else {
+        lines.push(`\treq := httptest.NewRequest(${httpMethod}, "${testPath}", nil)`);
+      }
       lines.push(`\treq.Header.Set("Authorization", "Bearer test-token")`);
       lines.push(`\tw := httptest.NewRecorder()`);
       lines.push(`\t// TODO: wire your router here, e.g.: router.ServeHTTP(w, req)`);
@@ -388,13 +412,79 @@ export class TestGenerator {
       lines.push(`\t}`);
       lines.push(`}`);
       lines.push(``);
+
+      // Invalid auth test
+      lines.push(`func ${funcName}_WithInvalidAuth(t *testing.T) {`);
+      if (hasBody) {
+        const bodyLiteral = this.buildGoBodyLiteral(ep);
+        lines.push(`\tbody, _ := json.Marshal(map[string]any{${bodyLiteral}})`);
+        lines.push(`\treq := httptest.NewRequest(${httpMethod}, "${testPath}", bytes.NewReader(body))`);
+        lines.push(`\treq.Header.Set("Content-Type", "application/json")`);
+      } else {
+        lines.push(`\treq := httptest.NewRequest(${httpMethod}, "${testPath}", nil)`);
+      }
+      lines.push(`\treq.Header.Set("Authorization", "InvalidTokenFormat")`);
+      lines.push(`\tw := httptest.NewRecorder()`);
+      lines.push(`\t// TODO: wire your router here, e.g.: router.ServeHTTP(w, req)`);
+      lines.push(`\tif w.Code >= 500 {`);
+      lines.push(`\t\tt.Errorf("expected non-5xx, got %d", w.Code)`);
+      lines.push(`\t}`);
+      lines.push(`}`);
+      lines.push(``);
+
+      // Empty body test for POST/PUT/PATCH
+      if (hasBody) {
+        lines.push(`func ${funcName}_EmptyBody(t *testing.T) {`);
+        lines.push(`\treq := httptest.NewRequest(${httpMethod}, "${testPath}", strings.NewReader("{}"))`);
+        lines.push(`\treq.Header.Set("Content-Type", "application/json")`);
+        lines.push(`\tw := httptest.NewRecorder()`);
+        lines.push(`\t// TODO: wire your router here, e.g.: router.ServeHTTP(w, req)`);
+        lines.push(`\t// expected 4xx for empty body`);
+        lines.push(`\tif w.Code < 400 || w.Code >= 500 {`);
+        lines.push(`\t\tt.Errorf("expected 4xx for empty body, got %d", w.Code)`);
+        lines.push(`\t}`);
+        lines.push(`}`);
+        lines.push(``);
+      }
+
+      // Boundary tests for path params
+      for (const param of ep.params.filter((p) => p.location === "path")) {
+        const paramType = param.type ?? "id";
+        const values = BOUNDARY_VALUES[paramType] ?? BOUNDARY_VALUES["id"];
+        for (const val of values) {
+          const cleanVal = val.replace(/"/g, "");
+          const boundaryPath = this.buildGoTestPathFromPath(ep.path.replace(`:${param.name}`, cleanVal));
+          const capitalParam = param.name.charAt(0).toUpperCase() + param.name.slice(1);
+          const safeVal = cleanVal.replace(/[^a-zA-Z0-9]/g, "_");
+          lines.push(`func ${funcName}_Boundary_${capitalParam}_${safeVal}(t *testing.T) {`);
+          lines.push(`\treq := httptest.NewRequest(${httpMethod}, "${boundaryPath}", nil)`);
+          lines.push(`\tw := httptest.NewRecorder()`);
+          lines.push(`\t// TODO: wire your router here, e.g.: router.ServeHTTP(w, req)`);
+          lines.push(`\tif w.Code >= 500 {`);
+          lines.push(`\t\tt.Errorf("expected non-5xx for ${param.name}=${cleanVal}, got %d", w.Code)`);
+          lines.push(`\t}`);
+          lines.push(`}`);
+          lines.push(``);
+        }
+      }
     }
 
     return lines.join("\n");
   }
 
   private buildGoTestPath(ep: Endpoint): string {
-    return ep.path.replace(/:([\w]+)/g, "test-$1");
+    return ep.path.replace(/:(\w+)/g, "test-$1");
+  }
+
+  private buildGoBodyLiteral(ep: Endpoint): string {
+    if (!ep.body?.fields || Object.keys(ep.body.fields).length === 0) return "";
+    return Object.entries(ep.body.fields)
+      .map(([key, type]) => `"${escapeForStringLiteral(key)}": ${this.sampleValueForType(type, key)}`)
+      .join(", ");
+  }
+
+  private buildGoTestPathFromPath(path: string): string {
+    return path.replace(/:(\w+)/g, "test-$1");
   }
 
   private toGoFuncName(ep: Endpoint): string {
@@ -579,7 +669,7 @@ export class TestGenerator {
     lines.push(`    });`);
     lines.push(``);
     lines.push(`    expect(response.status).toBeLessThan(500);`);
-    lines.push(`  });`);
+    lines.push(`  };`);
     lines.push(``);
 
     for (const param of queryParams.filter(p => p.required)) {
@@ -793,7 +883,7 @@ export class TestGenerator {
   }
 
   private buildTestPath(ep: Endpoint): string {
-    return ep.path.replace(/:([\w]+)/g, "test-$1");
+    return ep.path.replace(/:(\w+)/g, "test-$1");
   }
 
   private groupByPrefix(endpoints: Endpoint[]): Record<string, Endpoint[]> {
