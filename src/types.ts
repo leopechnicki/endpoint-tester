@@ -62,8 +62,8 @@ export interface ScanOptions {
   exclude?: string[];
 }
 
-/** The set of test output formats this tool supports. */
-export const SUPPORTED_FORMATS = ["vitest", "jest", "pytest", "go"] as const;
+/** The set of output formats this tool supports (test formats + OpenAPI spec). */
+export const SUPPORTED_FORMATS = ["vitest", "jest", "pytest", "go", "openapi"] as const;
 export type SupportedFormat = (typeof SUPPORTED_FORMATS)[number];
 
 export interface GenerateOptions {

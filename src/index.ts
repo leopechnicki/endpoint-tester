@@ -1,5 +1,6 @@
 export { Scanner } from "./scanner.js";
 export { TestGenerator } from "./generator.js";
+export { OpenApiGenerator, toYaml, type OpenApiOptions } from "./openapi.js";
 export { detectFramework, type DetectionResult } from "./detect.js";
 export { getAdapter, registerAdapter, getAvailableFrameworks } from "./adapters/index.js";
 export { ExpressAdapter } from "./adapters/express.js";

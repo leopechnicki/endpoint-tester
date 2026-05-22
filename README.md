@@ -41,6 +41,7 @@ Source code in  -->  [endpoint-tester]  -->  Test suite out
 - **Auto-detection** -- Detects your framework automatically from package.json, requirements.txt, pom.xml, or source imports. No config needed.
 - **12 framework adapters** -- Express.js, Fastify, Koa, NestJS, FastAPI, Flask, Django, Spring Boot, Gin, Echo, Chi, net/http. Extensible for any framework via the Adapter interface.
 - **3 test formats** -- Vitest, Jest, Pytest. Generated tests include status code assertions, auth header tests, error response tests, and boundary value tests.
+- **OpenAPI 3.1 output** -- Emit a spec straight from your source code (`--format openapi`, JSON or YAML). Feed it to Swagger UI, Schemathesis, Dredd, Apidog, or `openapi-generator` — no manual annotations, zero runtime dependencies.
 - **Smart route parsing** -- Handles router prefixes, middleware chains, `app.route()` chaining, multi-line decorators, class-level annotations, Blueprints, and more.
 - **Zero config** -- Works out of the box. One command, one output.
 
@@ -70,6 +71,10 @@ endpoint-tester generate ./src --format vitest --output ./tests/api.test.ts
 
 # Generate with custom base URL
 endpoint-tester generate ./src --format jest --base-url http://localhost:8080
+
+# Generate an OpenAPI 3.1 spec (JSON, or YAML by output extension)
+endpoint-tester generate ./src --format openapi --output openapi.json
+endpoint-tester generate ./src --format openapi --output openapi.yaml
 ```
 
 ### Example output
@@ -112,7 +117,7 @@ Running `endpoint-tester generate ./src --format vitest` generates a complete te
 |---|---|---|
 | `--framework` / `-f` | Framework adapter (express, fastapi, spring, django, flask, fastify, koa, nestjs, gin, echo, chi, nethttp). Auto-detected if omitted. | auto-detect |
 | `--output` / `-o` | Output path -- directory or file path | `./generated-tests` |
-| `--format` | Test format (vitest, jest, pytest) | `vitest` |
+| `--format` | Output format (vitest, jest, pytest, go, openapi) | `vitest` |
 | `--base-url` | Base URL for test requests | `http://localhost:3000` |
 
 ## Supported frameworks
@@ -257,9 +262,8 @@ import {
 
 Contributions are welcome. Areas with the most impact:
 
-- New framework adapters (Hono, Gin, Actix, Laravel, etc.)
+- New framework adapters (Hono, Actix, Laravel, etc.)
 - Smarter body inference from type annotations
-- OpenAPI/Swagger output format
 - Watch mode for continuous test generation
 
 Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)
