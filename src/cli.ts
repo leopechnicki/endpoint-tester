@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import { Scanner } from "./scanner.js";
 import { TestGenerator } from "./generator.js";
+import { OpenApiGenerator } from "./openapi.js";
 import { getAdapter } from "./adapters/index.js";
 import { Framework, SUPPORTED_FORMATS, type SupportedFormat } from "./types.js";
 import { detectFramework } from "./detect.js";
@@ -108,7 +109,11 @@ program
     "Output path — directory or file (e.g. ./tests or ./tests/api.test.ts)",
     "./generated-tests",
   )
-  .option("--format <format>", "Test format (vitest, jest, pytest, go)", "vitest")
+  .option(
+    "--format <format>",
+    "Output format (vitest, jest, pytest, go, openapi). openapi emits an OpenAPI 3.1 spec; .yaml/.yml output writes YAML, otherwise JSON.",
+    "vitest",
+  )
   .option("--base-url <url>", "Base URL for tests", "http://localhost:3000")
   .option("-e, --exclude <patterns...>", "Glob patterns to exclude (repeatable, e.g. --exclude legacy/** test/**)")
   .action(
@@ -155,6 +160,33 @@ program
         return;
       }
 
+      const outputPath = resolve(options.output);
+      const outputExt = extname(outputPath).toLowerCase();
+
+      if (options.format === "openapi") {
+        console.log(`Found ${endpoints.length} endpoint(s). Generating OpenAPI spec...`);
+
+        const isYaml = outputExt === ".yaml" || outputExt === ".yml";
+        const specContent = new OpenApiGenerator().generate(endpoints, {
+          baseUrl: options.baseUrl,
+          format: isYaml ? "yaml" : "json",
+        });
+
+        let specFile: string;
+        if (outputExt) {
+          mkdirSync(dirname(outputPath), { recursive: true });
+          specFile = outputPath;
+        } else {
+          // Default output is the "./generated-tests" directory — write a spec file there.
+          mkdirSync(outputPath, { recursive: true });
+          specFile = resolve(outputPath, "openapi.json");
+        }
+
+        writeFileSync(specFile, specContent);
+        console.log(`OpenAPI spec written to ${specFile}`);
+        return;
+      }
+
       console.log(`Found ${endpoints.length} endpoint(s). Generating tests...`);
 
       const generator = new TestGenerator();
@@ -165,8 +197,6 @@ program
         baseUrl: options.baseUrl,
       });
 
-      const outputPath = resolve(options.output);
-      const outputExt = extname(outputPath);
       let outFile: string;
 
       if (outputExt) {
