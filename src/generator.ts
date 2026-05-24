@@ -1,5 +1,6 @@
 import type { Endpoint, GenerateOptions, HttpMethod } from "./types.js";
 import { SUPPORTED_FORMATS, type SupportedFormat } from "./types.js";
+import { OpenApiGenerator } from "./openapi.js";
 
 export { SUPPORTED_FORMATS, type SupportedFormat };
 
@@ -65,6 +66,8 @@ export class TestGenerator {
         return this.generatePytest(options.endpoints, options.baseUrl);
       case "go":
         return this.generateGo(options.endpoints);
+      case "openapi":
+        return new OpenApiGenerator().generate(options.endpoints, { baseUrl: options.baseUrl });
       default:
         throw new Error(`Unsupported test format: ${options.format}`);
     }
