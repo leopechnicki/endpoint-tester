@@ -12,6 +12,7 @@ import { GinAdapter } from "./gin.js";
 import { EchoAdapter } from "./echo.js";
 import { ChiAdapter } from "./chi.js";
 import { NetHttpAdapter } from "./nethttp.js";
+import { HonoAdapter } from "./hono.js";
 
 const adapterRegistry = new Map<Framework, Adapter>();
 
@@ -46,5 +47,6 @@ registerAdapter(new GinAdapter());
 registerAdapter(new EchoAdapter());
 registerAdapter(new ChiAdapter());
 registerAdapter(new NetHttpAdapter());
+registerAdapter(new HonoAdapter());
 
-export { ExpressAdapter, FastAPIAdapter, SpringAdapter, DjangoAdapter, FlaskAdapter, FastifyAdapter, KoaAdapter, NestJSAdapter, GinAdapter, EchoAdapter, ChiAdapter, NetHttpAdapter };
+export { ExpressAdapter, FastAPIAdapter, SpringAdapter, DjangoAdapter, FlaskAdapter, FastifyAdapter, KoaAdapter, NestJSAdapter, GinAdapter, EchoAdapter, ChiAdapter, NetHttpAdapter, HonoAdapter };

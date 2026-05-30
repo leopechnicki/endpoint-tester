@@ -11,6 +11,7 @@ export enum Framework {
   Echo = "echo",
   Chi = "chi",
   NetHttp = "nethttp",
+  Hono = "hono",
 }
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS";
