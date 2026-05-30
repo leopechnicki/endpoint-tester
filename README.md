@@ -39,7 +39,7 @@ Source code in  -->  [endpoint-tester]  -->  Test suite out
 ## Features
 
 - **Auto-detection** -- Detects your framework automatically from package.json, requirements.txt, pom.xml, or source imports. No config needed.
-- **12 framework adapters** -- Express.js, Fastify, Koa, NestJS, FastAPI, Flask, Django, Spring Boot, Gin, Echo, Chi, net/http. Extensible for any framework via the Adapter interface.
+- **13 framework adapters** -- Express.js, Fastify, Koa, NestJS, Hono, FastAPI, Flask, Django, Spring Boot, Gin, Echo, Chi, net/http. Extensible for any framework via the Adapter interface.
 - **3 test formats** -- Vitest, Jest, Pytest. Generated tests include status code assertions, auth header tests, error response tests, and boundary value tests.
 - **OpenAPI 3.1 output** -- Emit a spec straight from your source code (`--format openapi`, JSON or YAML). Feed it to Swagger UI, Schemathesis, Dredd, Apidog, or `openapi-generator` — no manual annotations, zero runtime dependencies.
 - **Smart route parsing** -- Handles router prefixes, middleware chains, `app.route()` chaining, multi-line decorators, class-level annotations, Blueprints, and more.
@@ -113,18 +113,58 @@ Running `endpoint-tester generate ./src --format vitest` generates a complete te
 
 ## CLI reference
 
+### scan / generate
+
 | Option | Description | Default |
 |---|---|---|
-| `--framework` / `-f` | Framework adapter (express, fastapi, spring, django, flask, fastify, koa, nestjs, gin, echo, chi, nethttp). Auto-detected if omitted. | auto-detect |
+| `--framework` / `-f` | Framework adapter (express, fastapi, spring, django, flask, fastify, koa, nestjs, hono, gin, echo, chi, nethttp). Auto-detected if omitted. | auto-detect |
 | `--output` / `-o` | Output path -- directory or file path | `./generated-tests` |
 | `--format` | Output format (vitest, jest, pytest, go, openapi) | `vitest` |
 | `--base-url` | Base URL for test requests | `http://localhost:3000` |
+| `--watch` / `-w` | Watch for source file changes and re-scan/regenerate automatically | off |
+| `--exclude` / `-e` | Glob patterns to exclude (repeatable) | none |
+| `--verbose` / `-v` | Show source file and line number for each endpoint (scan only) | off |
+
+### ci
+
+Run in CI to guard against accidental endpoint deletion:
+
+```bash
+# First run saves a baseline (auto-created if missing)
+endpoint-tester ci ./src
+
+# Subsequent CI runs — exits 1 if fewer endpoints than baseline
+endpoint-tester ci ./src
+
+# After an intentional endpoint removal, refresh the baseline
+endpoint-tester ci ./src --update-baseline
+
+# Custom baseline file path (default: .endpoint-tester-baseline.json)
+endpoint-tester ci ./src --baseline-file ci/baseline.json
+```
+
+Exit codes: `0` = pass (count same or higher), `1` = fail (count dropped below baseline).
+
+## Watch mode
+
+Re-scan and regenerate every time a source file changes:
+
+```bash
+# Watch and rescan
+endpoint-tester scan ./src --watch
+
+# Watch and regenerate tests
+endpoint-tester generate ./src --watch --output ./tests/api.test.ts
+```
+
+Watches `.ts`, `.js`, `.py`, `.go`, `.java`, `.kt`, `.rs` files. Changes are debounced (300 ms) to avoid spurious re-runs during saves. Press Ctrl+C to stop.
 
 ## Supported frameworks
 
 | Framework | Patterns detected |
 |---|---|
 | **Express.js** | `app.get()`, `router.post()`, `app.route().get().post()`, route params, router prefixes via `app.use()` and `router.use()`, middleware chains |
+| **Hono** | `app.get()`, `app.post()`, `app.route()` groups, `app.use()` mounts, `:param` path params, `c.req.query()` inference, body inference from `c.req.json()` |
 | **Fastify** | `fastify.get()`, `fastify.route({ method, url, handler })`, shorthand method registrations |
 | **Koa** | `@koa/router` with `router.get()` / `router.post()`, route params, `router.prefix()` |
 | **NestJS** | `@Controller('prefix')` + method decorators (`@Get`, `@Post`, ...), `@Param`, `@Query`, `@Body` DTO inference |
