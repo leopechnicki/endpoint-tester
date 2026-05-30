@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
-import { resolve, dirname, extname } from "node:path";
+import { resolve, dirname, extname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { writeFileSync, mkdirSync, readFileSync } from "node:fs";
+import { writeFileSync, mkdirSync, readFileSync, watch as fsWatch, existsSync } from "node:fs";
 import { Scanner } from "./scanner.js";
 import { TestGenerator } from "./generator.js";
 import { OpenApiGenerator } from "./openapi.js";
@@ -47,9 +47,58 @@ async function resolveFramework(directory: string, explicitFramework?: string): 
     return detected.framework;
   }
 
-  console.log("Could not auto-detect framework. Defaulting to express.");
-  console.log("Hint: use --framework to specify explicitly (express, fastapi, spring, django, flask, fastify, koa, nestjs, gin, echo, chi, nethttp)");
-  return Framework.Express;
+  // Check if this at least looks like a JS project — if so, fall back to express with a warning
+  const pkgPath = resolve(directory, "package.json");
+  if (existsSync(pkgPath)) {
+    console.log("Warning: Could not detect a supported framework in package.json.");
+    console.log("Defaulting to express. Use --framework to specify explicitly (express, fastapi, spring, django, flask, fastify, koa, nestjs, hono, gin, echo, chi, nethttp).");
+    return Framework.Express;
+  }
+
+  // No framework detected, no JS project — fail with a clear message
+  console.error("No framework detected. Use --framework to specify (express, fastapi, spring, django, flask, fastify, koa, nestjs, hono, gin, echo, chi, nethttp).");
+  process.exit(1);
+}
+
+/** Extensions watched in --watch mode. */
+const WATCH_EXTENSIONS = new Set([".ts", ".js", ".py", ".go", ".java", ".kt", ".rs"]);
+
+/**
+ * Start native fs.watch on a directory and call the callback on file changes,
+ * debounced by the given delay (default 300 ms).
+ * Returns a cleanup function that stops all watchers.
+ */
+function startWatcher(
+  directory: string,
+  debounceMs: number,
+  onChange: (changedFile: string) => void,
+): () => void {
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const watcher = fsWatch(directory, { recursive: true }, (eventType, filename) => {
+    if (!filename) return;
+
+    // Only react to source-code file changes
+    const ext = extname(filename.toString());
+    if (!WATCH_EXTENSIONS.has(ext)) return;
+
+    const displayPath = relative(directory, resolve(directory, filename.toString()));
+
+    // Clear any pending debounce and restart
+    if (debounceTimer !== null) {
+      clearTimeout(debounceTimer);
+    }
+
+    debounceTimer = setTimeout(() => {
+      debounceTimer = null;
+      onChange(displayPath);
+    }, debounceMs);
+  });
+
+  return () => {
+    if (debounceTimer !== null) clearTimeout(debounceTimer);
+    watcher.close();
+  };
 }
 
 program
@@ -58,41 +107,62 @@ program
   .argument("<directory>", "Directory to scan")
   .option(
     "-f, --framework <framework>",
-    "Framework to scan for (express, fastapi, spring, django, flask, fastify, koa, nestjs, gin, echo, chi, nethttp)",
+    "Framework to scan for (express, fastapi, spring, django, flask, fastify, koa, nestjs, hono, gin, echo, chi, nethttp)",
   )
   .option("-o, --output <file>", "Output file for results (JSON)")
-  .option("-e, --exclude <patterns...>", "Glob patterns to exclude (repeatable, e.g. --exclude legacy/** test/**)")  
+  .option("-e, --exclude <patterns...>", "Glob patterns to exclude (repeatable, e.g. --exclude legacy/** test/**)")
   .option("-v, --verbose", "Show source file and line number for each endpoint")
-  .action(async (directory: string, options: { framework?: string; output?: string; exclude?: string[]; verbose?: boolean }) => {
+  .option("-w, --watch", "Watch for file changes and re-scan automatically")
+  .action(async (directory: string, options: { framework?: string; output?: string; exclude?: string[]; verbose?: boolean; watch?: boolean }) => {
     const dir = resolve(directory);
     const framework = await resolveFramework(dir, options.framework);
     const adapter = getAdapter(framework);
     const scanner = new Scanner(adapter);
 
-    console.log(`Scanning ${dir} for ${framework} endpoints...`);
-
-    const endpoints = await scanner.scan({
-      directory: dir,
-      framework,
-      exclude: options.exclude,
-    });
-
-    console.log(`Found ${endpoints.length} endpoint(s):\n`);
-
-    for (const ep of endpoints) {
-      const params = ep.params.length > 0 ? ` [params: ${ep.params.map((p) => p.name).join(", ")}]` : "";
-      console.log(`  ${ep.method.padEnd(7)} ${ep.path}${params}`);
-      if (options.verbose && ep.file) {
-        const loc = ep.line !== undefined ? `${ep.file}:${ep.line}` : ep.file;
-        console.log(`           ${loc}`);
+    const runScan = async (triggeredBy?: string) => {
+      if (triggeredBy) {
+        const ts = new Date().toLocaleTimeString();
+        console.log(`\n[${ts}] Change detected in ${triggeredBy}, re-scanning...`);
       }
-    }
 
-    if (options.output) {
-      const outPath = resolve(options.output);
-      mkdirSync(dirname(outPath), { recursive: true });
-      writeFileSync(outPath, JSON.stringify(endpoints, null, 2));
-      console.log(`\nResults written to ${outPath}`);
+      console.log(`Scanning ${dir} for ${framework} endpoints...`);
+
+      const endpoints = await scanner.scan({
+        directory: dir,
+        framework,
+        exclude: options.exclude,
+      });
+
+      console.log(`Found ${endpoints.length} endpoint(s):\n`);
+
+      for (const ep of endpoints) {
+        const params = ep.params.length > 0 ? ` [params: ${ep.params.map((p) => p.name).join(", ")}]` : "";
+        console.log(`  ${ep.method.padEnd(7)} ${ep.path}${params}`);
+        if (options.verbose && ep.file) {
+          const loc = ep.line !== undefined ? `${ep.file}:${ep.line}` : ep.file;
+          console.log(`           ${loc}`);
+        }
+      }
+
+      if (options.output) {
+        const outPath = resolve(options.output);
+        mkdirSync(dirname(outPath), { recursive: true });
+        writeFileSync(outPath, JSON.stringify(endpoints, null, 2));
+        console.log(`\nResults written to ${outPath}`);
+      }
+    };
+
+    await runScan();
+
+    if (options.watch) {
+      console.log("\nWatching for changes... (Ctrl+C to stop)");
+      startWatcher(dir, 300, (changedFile) => {
+        runScan(changedFile).catch((err: unknown) => {
+          console.error("Scan error:", err);
+        });
+      });
+      // Keep the process alive
+      process.stdin.resume();
     }
   });
 
@@ -102,7 +172,7 @@ program
   .argument("<directory>", "Directory to scan for endpoints")
   .option(
     "-f, --framework <framework>",
-    "Framework to scan for (express, fastapi, spring, django, flask, fastify, koa, nestjs, gin, echo, chi, nethttp)",
+    "Framework to scan for (express, fastapi, spring, django, flask, fastify, koa, nestjs, hono, gin, echo, chi, nethttp)",
   )
   .option(
     "-o, --output <path>",
@@ -116,6 +186,7 @@ program
   )
   .option("--base-url <url>", "Base URL for tests", "http://localhost:3000")
   .option("-e, --exclude <patterns...>", "Glob patterns to exclude (repeatable, e.g. --exclude legacy/** test/**)")
+  .option("-w, --watch", "Watch for file changes and regenerate tests automatically")
   .action(
     async (
       directory: string,
@@ -125,6 +196,7 @@ program
         format: string;
         baseUrl: string;
         exclude?: string[];
+        watch?: boolean;
       },
     ) => {
       try {
@@ -147,74 +219,167 @@ program
       const adapter = getAdapter(framework);
       const scanner = new Scanner(adapter);
 
-      console.log(`Scanning ${dir} for ${framework} endpoints...`);
-
-      const endpoints = await scanner.scan({
-        directory: dir,
-        framework,
-        exclude: options.exclude,
-      });
-
-      if (endpoints.length === 0) {
-        console.log("No endpoints found.");
-        return;
-      }
-
-      const outputPath = resolve(options.output);
-      const outputExt = extname(outputPath).toLowerCase();
-
-      if (options.format === "openapi") {
-        console.log(`Found ${endpoints.length} endpoint(s). Generating OpenAPI spec...`);
-
-        const isYaml = outputExt === ".yaml" || outputExt === ".yml";
-        const specContent = new OpenApiGenerator().generate(endpoints, {
-          baseUrl: options.baseUrl,
-          format: isYaml ? "yaml" : "json",
-        });
-
-        let specFile: string;
-        if (outputExt) {
-          mkdirSync(dirname(outputPath), { recursive: true });
-          specFile = outputPath;
-        } else {
-          // Default output is the "./generated-tests" directory — write a spec file there.
-          mkdirSync(outputPath, { recursive: true });
-          specFile = resolve(outputPath, "openapi.json");
+      const runGenerate = async (triggeredBy?: string) => {
+        if (triggeredBy) {
+          const ts = new Date().toLocaleTimeString();
+          console.log(`\n[${ts}] Change detected in ${triggeredBy}, regenerating...`);
         }
 
-        writeFileSync(specFile, specContent);
-        console.log(`OpenAPI spec written to ${specFile}`);
+        console.log(`Scanning ${dir} for ${framework} endpoints...`);
+
+        const endpoints = await scanner.scan({
+          directory: dir,
+          framework,
+          exclude: options.exclude,
+        });
+
+        if (endpoints.length === 0) {
+          console.log("No endpoints found.");
+          return;
+        }
+
+        const outputPath = resolve(options.output);
+        const outputExt = extname(outputPath).toLowerCase();
+
+        if (options.format === "openapi") {
+          console.log(`Found ${endpoints.length} endpoint(s). Generating OpenAPI spec...`);
+
+          const isYaml = outputExt === ".yaml" || outputExt === ".yml";
+          const specContent = new OpenApiGenerator().generate(endpoints, {
+            baseUrl: options.baseUrl,
+            format: isYaml ? "yaml" : "json",
+          });
+
+          let specFile: string;
+          if (outputExt) {
+            mkdirSync(dirname(outputPath), { recursive: true });
+            specFile = outputPath;
+          } else {
+            // Default output is the "./generated-tests" directory — write a spec file there.
+            mkdirSync(outputPath, { recursive: true });
+            specFile = resolve(outputPath, "openapi.json");
+          }
+
+          writeFileSync(specFile, specContent);
+          console.log(`OpenAPI spec written to ${specFile}`);
+          return;
+        }
+
+        console.log(`Found ${endpoints.length} endpoint(s). Generating tests...`);
+
+        const generator = new TestGenerator();
+        const testContent = generator.generate({
+          endpoints,
+          output: options.output,
+          format: options.format as SupportedFormat,
+          baseUrl: options.baseUrl,
+        });
+
+        let outFile: string;
+
+        if (outputExt) {
+          // User provided a file path (e.g. ./tests/api.test.ts)
+          mkdirSync(dirname(outputPath), { recursive: true });
+          outFile = outputPath;
+        } else {
+          // User provided a directory path
+          mkdirSync(outputPath, { recursive: true });
+          const ext = options.format === "pytest" ? "py" : options.format === "go" ? "go" : "ts";
+          const testFileSuffix = options.format === "go" ? "_test" : ".test";
+          const testFileName = options.format === "go" ? `endpoints_test.${ext}` : `endpoints${testFileSuffix}.${ext}`;
+          outFile = resolve(outputPath, testFileName);
+        }
+
+        writeFileSync(outFile, testContent);
+
+        console.log(`Tests written to ${outFile}`);
+      };
+
+      await runGenerate();
+
+      if (options.watch) {
+        console.log("\nWatching for changes... (Ctrl+C to stop)");
+        startWatcher(dir, 300, (changedFile) => {
+          runGenerate(changedFile).catch((err: unknown) => {
+            console.error("Generate error:", err);
+          });
+        });
+        // Keep the process alive
+        process.stdin.resume();
+      }
+    },
+  );
+
+program
+  .command("ci")
+  .description("CI integration mode — compare endpoint count against a saved baseline")
+  .argument("<directory>", "Directory to scan for endpoints")
+  .option(
+    "-f, --framework <framework>",
+    "Framework to scan for",
+  )
+  .option("--update-baseline", "Save current endpoint count as the new baseline")
+  .option(
+    "--baseline-file <file>",
+    "Path to the baseline JSON file",
+    ".endpoint-tester-baseline.json",
+  )
+  .action(
+    async (
+      directory: string,
+      options: {
+        framework?: string;
+        updateBaseline?: boolean;
+        baselineFile: string;
+      },
+    ) => {
+      const dir = resolve(directory);
+      const framework = await resolveFramework(dir, options.framework);
+      const adapter = getAdapter(framework);
+      const scanner = new Scanner(adapter);
+
+      console.log(`Scanning ${dir} for ${framework} endpoints...`);
+
+      const endpoints = await scanner.scan({ directory: dir, framework });
+      const currentCount = endpoints.length;
+
+      console.log(`Found ${currentCount} endpoint(s).`);
+
+      const baselinePath = resolve(options.baselineFile);
+
+      if (options.updateBaseline) {
+        const baseline = { count: currentCount, framework, updatedAt: new Date().toISOString() };
+        writeFileSync(baselinePath, JSON.stringify(baseline, null, 2));
+        console.log(`Baseline updated: ${currentCount} endpoints saved to ${baselinePath}`);
         return;
       }
 
-      console.log(`Found ${endpoints.length} endpoint(s). Generating tests...`);
-
-      const generator = new TestGenerator();
-      const testContent = generator.generate({
-        endpoints,
-        output: options.output,
-        format: options.format as SupportedFormat,
-        baseUrl: options.baseUrl,
-      });
-
-      let outFile: string;
-
-      if (outputExt) {
-        // User provided a file path (e.g. ./tests/api.test.ts)
-        mkdirSync(dirname(outputPath), { recursive: true });
-        outFile = outputPath;
-      } else {
-        // User provided a directory path
-        mkdirSync(outputPath, { recursive: true });
-        const ext = options.format === "pytest" ? "py" : options.format === "go" ? "go" : "ts";
-        const testFileSuffix = options.format === "go" ? "_test" : ".test";
-        const testFileName = options.format === "go" ? `endpoints_test.${ext}` : `endpoints${testFileSuffix}.${ext}`;
-        outFile = resolve(outputPath, testFileName);
+      if (!existsSync(baselinePath)) {
+        // First run — save baseline automatically
+        const baseline = { count: currentCount, framework, updatedAt: new Date().toISOString() };
+        writeFileSync(baselinePath, JSON.stringify(baseline, null, 2));
+        console.log(`No baseline found. Saved ${currentCount} endpoints as baseline to ${baselinePath}`);
+        return;
       }
 
-      writeFileSync(outFile, testContent);
+      // Compare against existing baseline
+      const baselineData = JSON.parse(readFileSync(baselinePath, "utf-8")) as {
+        count: number;
+        framework?: string;
+        updatedAt?: string;
+      };
+      const baselineCount = baselineData.count;
 
-      console.log(`Tests written to ${outFile}`);
+      if (currentCount < baselineCount) {
+        const diff = baselineCount - currentCount;
+        console.error(
+          `CI FAIL: Endpoint count dropped from ${baselineCount} (baseline) to ${currentCount} (current). ` +
+          `${diff} endpoint(s) removed. Run with --update-baseline to accept the new count.`,
+        );
+        process.exit(1);
+      }
+
+      console.log(`CI PASS: ${currentCount} endpoints (baseline: ${baselineCount})`);
     },
   );
 
