@@ -16,9 +16,14 @@ describe("getAvailableFrameworks", () => {
     expect(frameworks).toContain(Framework.NestJS);
   });
 
-  it("should return exactly 12 built-in frameworks", () => {
+  it("should return exactly 13 built-in frameworks", () => {
     const frameworks = getAvailableFrameworks();
-    expect(frameworks).toHaveLength(12);
+    expect(frameworks).toHaveLength(13);
+  });
+
+  it("should include the Hono framework", () => {
+    const frameworks = getAvailableFrameworks();
+    expect(frameworks).toContain(Framework.Hono);
   });
 
   it("should include all Go frameworks", () => {

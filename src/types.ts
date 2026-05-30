@@ -7,6 +7,7 @@ export enum Framework {
   Fastify = "fastify",
   Koa = "koa",
   NestJS = "nestjs",
+  Hono = "hono",
   Gin = "gin",
   Echo = "echo",
   Chi = "chi",

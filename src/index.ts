@@ -11,6 +11,7 @@ export { DjangoAdapter } from "./adapters/django.js";
 export { FastifyAdapter } from "./adapters/fastify.js";
 export { KoaAdapter } from "./adapters/koa.js";
 export { NestJSAdapter } from "./adapters/nestjs.js";
+export { HonoAdapter } from "./adapters/hono.js";
 export {
   Framework,
   SUPPORTED_FORMATS,

@@ -78,6 +78,10 @@ function detectFromPackageJson(directory: string): DetectionResult | null {
       return { framework: Framework.Koa, confidence: "high", reason: "koa found in package.json dependencies" };
     }
 
+    if (allDeps["hono"]) {
+      return { framework: Framework.Hono, confidence: "high", reason: "hono found in package.json dependencies" };
+    }
+
     if (allDeps["express"]) {
       return { framework: Framework.Express, confidence: "high", reason: "express found in package.json dependencies" };
     }
@@ -241,6 +245,13 @@ async function detectFromFilePatterns(directory: string): Promise<DetectionResul
       if (content.includes("require('koa')") || content.includes("require(\"koa\")") ||
           content.includes("from 'koa'") || content.includes("from \"koa\"")) {
         return { framework: Framework.Koa, confidence: "medium", reason: `Koa import found in ${file}` };
+      }
+
+      // Hono
+      if (content.includes("require('hono')") || content.includes("require(\"hono\")") ||
+          content.includes("from 'hono'") || content.includes("from \"hono\"") ||
+          content.includes("from 'hono/") || content.includes("from \"hono/")) {
+        return { framework: Framework.Hono, confidence: "medium", reason: `Hono import found in ${file}` };
       }
 
       // Express
