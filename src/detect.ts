@@ -95,6 +95,10 @@ function detectFromPackageJson(directory: string): DetectionResult | null {
       return { framework: Framework.Koa, confidence: "high", reason: "@types/koa found in package.json" };
     }
 
+    if (allDeps["@hono/node-server"]) {
+      return { framework: Framework.Hono, confidence: "high", reason: "@hono/node-server found in package.json" };
+    }
+
     return null;
   } catch (err) {
     warnOnReadError(pkgPath, err);
