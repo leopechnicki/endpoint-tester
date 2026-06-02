@@ -36,6 +36,208 @@ Source code in  -->  [endpoint-tester]  -->  Test suite out
   Spring Boot
 ```
 
+## How It Works
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Your Source Code                          │
+│   src/routes/users.ts   src/routes/orders.ts   src/app.ts       │
+└───────────────────────────────┬─────────────────────────────────┘
+                                │
+                    ┌───────────▼───────────┐
+                    │   Framework Detection  │
+                    │  (package.json / AST)  │
+                    │  express, fastapi, ... │
+                    └───────────┬───────────┘
+                                │
+                    ┌───────────▼───────────┐
+                    │    Adapter / Parser    │
+                    │  Reads route patterns  │
+                    │  Extracts params/body  │
+                    └───────────┬───────────┘
+                                │
+               ┌────────────────▼────────────────┐
+               │         Endpoint Registry         │
+               │  GET /users                       │
+               │  POST /users          body: {...} │
+               │  GET /users/:id       param: id   │
+               │  PUT /users/:id       param: id   │
+               │  DELETE /users/:id    param: id   │
+               └────────────────┬────────────────┘
+                                │
+           ┌────────────────────▼──────────────────────┐
+           │              Test Generator                 │
+           │  - status code assertions (GET→200, POST→201) │
+           │  - auth header tests (Bearer token)         │
+           │  - error tests (missing body → 4xx)         │
+           │  - boundary value tests (empty, negative ID) │
+           └────────────────────┬──────────────────────┘
+                                │
+          ┌─────────────────────▼──────────────────────┐
+          │               Output                        │
+          │  tests/api.test.ts   openapi.yaml   stdout  │
+          └────────────────────────────────────────────┘
+```
+
+## Quick Demo
+
+A real Express.js app, from zero to a complete test suite in under 60 seconds.
+
+**The app** (`src/app.ts`):
+
+```typescript
+import express from 'express'
+import { Router } from 'express'
+
+const app = express()
+const router = Router()
+
+router.get('/users', listUsers)
+router.post('/users', createUser)
+router.get('/users/:id', getUser)
+router.put('/users/:id', updateUser)
+router.delete('/users/:id', deleteUser)
+router.get('/users/:id/orders', getUserOrders)
+
+app.use('/api', router)
+app.listen(3000)
+```
+
+**Step 1 — Install**
+
+```bash
+npm install -g endpoint-tester
+# or use without installing:
+npx endpoint-tester scan ./src
+```
+
+**Step 2 — Scan** (auto-detects Express)
+
+```bash
+$ endpoint-tester scan ./src
+
+Auto-detected framework: express (high confidence)
+Scanning ./src for express endpoints...
+Found 6 endpoint(s):
+
+  GET     /api/users
+  POST    /api/users
+  GET     /api/users/:id    [params: id]
+  PUT     /api/users/:id    [params: id]
+  DELETE  /api/users/:id    [params: id]
+  GET     /api/users/:id/orders  [params: id]
+```
+
+**Step 3 — Generate tests**
+
+```bash
+$ endpoint-tester generate ./src --format vitest --output ./tests/api.test.ts
+
+Generated 6 test cases → ./tests/api.test.ts
+```
+
+**The output** (`tests/api.test.ts`) — ready to run with `npx vitest`:
+
+```typescript
+import { describe, it, expect } from 'vitest'
+
+const BASE_URL = 'http://localhost:3000'
+const AUTH_TOKEN = process.env.TEST_AUTH_TOKEN ?? 'test-token'
+
+describe('GET /api/users', () => {
+  it('returns 200', async () => {
+    const res = await fetch(`${BASE_URL}/api/users`)
+    expect(res.status).toBe(200)
+  })
+  it('returns 401 without auth', async () => {
+    const res = await fetch(`${BASE_URL}/api/users`, {
+      headers: { Authorization: `Bearer invalid` },
+    })
+    expect(res.status).toBeOneOf([401, 403])
+  })
+})
+
+describe('POST /api/users', () => {
+  it('returns 201 with body', async () => {
+    const res = await fetch(`${BASE_URL}/api/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${AUTH_TOKEN}`,
+      },
+      body: JSON.stringify({}),
+    })
+    expect(res.status).toBe(201)
+  })
+  it('returns 4xx with missing body', async () => {
+    const res = await fetch(`${BASE_URL}/api/users`, { method: 'POST' })
+    expect(res.status).toBeGreaterThanOrEqual(400)
+  })
+})
+
+describe('GET /api/users/:id', () => {
+  it('returns 200 for valid id', async () => {
+    const res = await fetch(`${BASE_URL}/api/users/1`)
+    expect(res.status).toBe(200)
+  })
+  it('returns 404 for nonexistent id', async () => {
+    const res = await fetch(`${BASE_URL}/api/users/999999`)
+    expect(res.status).toBe(404)
+  })
+  it('returns 4xx for empty id', async () => {
+    const res = await fetch(`${BASE_URL}/api/users/`)
+    expect(res.status).toBeGreaterThanOrEqual(400)
+  })
+})
+
+// ... DELETE, PUT, and nested routes follow the same pattern
+```
+
+**Step 4 — Run** (against your running server)
+
+```bash
+$ npx vitest run tests/api.test.ts
+
+ PASS  tests/api.test.ts (1.2s)
+   GET /api/users
+     ✓ returns 200
+     ✓ returns 401 without auth
+   POST /api/users
+     ✓ returns 201 with body
+     ✓ returns 4xx with missing body
+   GET /api/users/:id
+     ✓ returns 200 for valid id
+     ✓ returns 404 for nonexistent id
+     ✓ returns 4xx for empty id
+```
+
+**Bonus — export OpenAPI spec**
+
+```bash
+$ endpoint-tester generate ./src --format openapi --output openapi.yaml
+
+openapi: "3.1.0"
+info:
+  title: API
+  version: "1.0.0"
+paths:
+  /api/users:
+    get:
+      summary: GET /api/users
+      responses:
+        "200": { description: OK }
+  /api/users/{id}:
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      ...
+```
+
+Feed this to Swagger UI, Schemathesis, or `openapi-generator` — no manual annotations needed.
+
 ## Features
 
 - **Auto-detection** -- Detects your framework automatically from package.json, requirements.txt, pom.xml, or source imports. No config needed.
