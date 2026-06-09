@@ -8,7 +8,7 @@
 [![npm downloads](https://img.shields.io/npm/dw/endpoint-tester.svg?style=flat-square&color=10b981)](https://www.npmjs.com/package/endpoint-tester)
 [![license](https://img.shields.io/npm/l/endpoint-tester.svg?style=flat-square&color=6366f1)](https://github.com/leopechnicki/endpoint-tester/blob/main/LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://github.com/leopechnicki/endpoint-tester)
-[![CI](https://img.shields.io/github/actions/workflow/status/leopechnicki/endpoint-tester/publish.yml?style=flat-square&label=CI)](https://github.com/leopechnicki/endpoint-tester/actions)
+[![CI](https://img.shields.io/github/actions/workflow/status/leopechnicki/endpoint-tester/ci.yml?style=flat-square&label=CI)](https://github.com/leopechnicki/endpoint-tester/actions/workflows/ci.yml)
 
 [npm](https://www.npmjs.com/package/endpoint-tester) · [GitHub](https://github.com/leopechnicki/endpoint-tester) · [Dev.to Article](https://dev.to/leo_pechnicki/endpoint-tester-auto-discover-api-endpoints-generate-tests-3d5j)
 
