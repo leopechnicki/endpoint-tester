@@ -10,6 +10,7 @@ import { OpenApiGenerator } from "./openapi.js";
 import { getAdapter } from "./adapters/index.js";
 import { Framework, SUPPORTED_FORMATS, type SupportedFormat } from "./types.js";
 import { detectFramework } from "./detect.js";
+import { loadConfig } from "./config.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -115,7 +116,13 @@ program
   .option("-w, --watch", "Watch for file changes and re-scan automatically")
   .action(async (directory: string, options: { framework?: string; output?: string; exclude?: string[]; verbose?: boolean; watch?: boolean }) => {
     const dir = resolve(directory);
-    const framework = await resolveFramework(dir, options.framework);
+
+    // Load config file from the scanned directory; CLI flags take precedence
+    const config = loadConfig(dir);
+    const effectiveFramework = options.framework ?? config?.framework;
+    const effectiveExclude = options.exclude ?? config?.exclude;
+
+    const framework = await resolveFramework(dir, effectiveFramework);
     const adapter = getAdapter(framework);
     const scanner = new Scanner(adapter);
 
@@ -130,7 +137,7 @@ program
       const endpoints = await scanner.scan({
         directory: dir,
         framework,
-        exclude: options.exclude,
+        exclude: effectiveExclude,
       });
 
       console.log(`Found ${endpoints.length} endpoint(s):\n`);
@@ -199,23 +206,34 @@ program
         watch?: boolean;
       },
     ) => {
+      const dir = resolve(directory);
+
+      // Load config file from the scanned directory; CLI flags take precedence
+      const config = loadConfig(dir);
+
+      // Merge config defaults under CLI flags (CLI flags override config file)
+      const effectiveFormat = (options.format !== "vitest" ? options.format : undefined) ?? config?.testRunner ?? options.format;
+      const effectiveOutput = (options.output !== "./generated-tests" ? options.output : undefined) ?? config?.outputDir ?? options.output;
+      const effectiveBaseUrl = (options.baseUrl !== "http://localhost:3000" ? options.baseUrl : undefined) ?? config?.baseUrl ?? options.baseUrl;
+      const effectiveFramework = options.framework ?? config?.framework;
+      const effectiveExclude = options.exclude ?? config?.exclude;
+
       try {
-        new URL(options.baseUrl);
+        new URL(effectiveBaseUrl);
       } catch {
-        console.error(`Invalid --base-url: "${options.baseUrl}" is not a valid URL.`);
+        console.error(`Invalid --base-url: "${effectiveBaseUrl}" is not a valid URL.`);
         process.exit(1);
       }
 
       const validFormats: readonly string[] = SUPPORTED_FORMATS;
-      if (!validFormats.includes(options.format)) {
+      if (!validFormats.includes(effectiveFormat)) {
         console.error(
-          `Invalid --format: "${options.format}". Must be one of: ${validFormats.join(", ")}.`,
+          `Invalid --format: "${effectiveFormat}". Must be one of: ${validFormats.join(", ")}.`,
         );
         process.exit(1);
       }
 
-      const dir = resolve(directory);
-      const framework = await resolveFramework(dir, options.framework);
+      const framework = await resolveFramework(dir, effectiveFramework);
       const adapter = getAdapter(framework);
       const scanner = new Scanner(adapter);
 
@@ -230,7 +248,7 @@ program
         const endpoints = await scanner.scan({
           directory: dir,
           framework,
-          exclude: options.exclude,
+          exclude: effectiveExclude,
         });
 
         if (endpoints.length === 0) {
@@ -238,15 +256,15 @@ program
           return;
         }
 
-        const outputPath = resolve(options.output);
+        const outputPath = resolve(effectiveOutput);
         const outputExt = extname(outputPath).toLowerCase();
 
-        if (options.format === "openapi") {
+        if (effectiveFormat === "openapi") {
           console.log(`Found ${endpoints.length} endpoint(s). Generating OpenAPI spec...`);
 
           const isYaml = outputExt === ".yaml" || outputExt === ".yml";
           const specContent = new OpenApiGenerator().generate(endpoints, {
-            baseUrl: options.baseUrl,
+            baseUrl: effectiveBaseUrl,
             format: isYaml ? "yaml" : "json",
           });
 
@@ -270,9 +288,9 @@ program
         const generator = new TestGenerator();
         const testContent = generator.generate({
           endpoints,
-          output: options.output,
-          format: options.format as SupportedFormat,
-          baseUrl: options.baseUrl,
+          output: effectiveOutput,
+          format: effectiveFormat as SupportedFormat,
+          baseUrl: effectiveBaseUrl,
         });
 
         let outFile: string;
@@ -284,9 +302,9 @@ program
         } else {
           // User provided a directory path
           mkdirSync(outputPath, { recursive: true });
-          const ext = options.format === "pytest" ? "py" : options.format === "go" ? "go" : "ts";
-          const testFileSuffix = options.format === "go" ? "_test" : ".test";
-          const testFileName = options.format === "go" ? `endpoints_test.${ext}` : `endpoints${testFileSuffix}.${ext}`;
+          const ext = effectiveFormat === "pytest" ? "py" : effectiveFormat === "go" ? "go" : "ts";
+          const testFileSuffix = effectiveFormat === "go" ? "_test" : ".test";
+          const testFileName = effectiveFormat === "go" ? `endpoints_test.${ext}` : `endpoints${testFileSuffix}.${ext}`;
           outFile = resolve(outputPath, testFileName);
         }
 
@@ -334,13 +352,18 @@ program
       },
     ) => {
       const dir = resolve(directory);
-      const framework = await resolveFramework(dir, options.framework);
+
+      // Load config file from the scanned directory; CLI flags take precedence
+      const config = loadConfig(dir);
+      const effectiveFramework = options.framework ?? config?.framework;
+
+      const framework = await resolveFramework(dir, effectiveFramework);
       const adapter = getAdapter(framework);
       const scanner = new Scanner(adapter);
 
       console.log(`Scanning ${dir} for ${framework} endpoints...`);
 
-      const endpoints = await scanner.scan({ directory: dir, framework });
+      const endpoints = await scanner.scan({ directory: dir, framework, exclude: config?.exclude });
       const currentCount = endpoints.length;
 
       console.log(`Found ${currentCount} endpoint(s).`);
