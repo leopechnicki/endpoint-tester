@@ -141,7 +141,61 @@ describe("CLI — ci command", () => {
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Baseline updated");
 
-    const newBaseline = JSON.parse(readFileSync(baselineFile, "utf-8")) as { count: number };
+    const newBaseline = JSON.parse(readFileSync(baselineFile, "utf-8")) as { count: number; endpoints: string[] };
     expect(newBaseline.count).toBe(2);
+    expect(Array.isArray(newBaseline.endpoints)).toBe(true);
+    expect(newBaseline.endpoints).toContain("GET:/users");
+    expect(newBaseline.endpoints).toContain("POST:/users");
+  });
+
+  it("fails when same-count endpoints are replaced (identity bug regression)", () => {
+    // The old count-only logic would PASS here because both baseline and current have 2 endpoints.
+    // The new identity-based logic must FAIL because the route identities differ.
+    setupProject({
+      "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
+      // Current: GET /items and POST /items (2 endpoints, different paths from baseline)
+      "app.ts": `app.get('/items', listItems);\napp.post('/items', createItem);`,
+    });
+
+    const baselineFile = join(TEST_DIR, ".endpoint-tester-baseline.json");
+    // Baseline: GET /users and POST /users (also 2 endpoints, but different identity)
+    writeFileSync(
+      baselineFile,
+      JSON.stringify({
+        endpoints: ["GET:/users", "POST:/users"],
+        count: 2,
+        framework: "express",
+        updatedAt: new Date().toISOString(),
+      }),
+    );
+
+    const { stdout, exitCode } = runCli(["ci", TEST_DIR, "--baseline-file", baselineFile]);
+    expect(exitCode).toBe(1);
+    expect(stdout).toContain("CI FAIL");
+    expect(stdout).toContain("GET:/users");
+    expect(stdout).toContain("POST:/users");
+  });
+
+  it("passes when new endpoints are added to baseline set", () => {
+    setupProject({
+      "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
+      // Current: 3 endpoints — baseline had 2, the originals are still present
+      "app.ts": `app.get('/users', getUsers);\napp.post('/users', createUser);\napp.delete('/users/:id', deleteUser);`,
+    });
+
+    const baselineFile = join(TEST_DIR, ".endpoint-tester-baseline.json");
+    writeFileSync(
+      baselineFile,
+      JSON.stringify({
+        endpoints: ["GET:/users", "POST:/users"],
+        count: 2,
+        framework: "express",
+        updatedAt: new Date().toISOString(),
+      }),
+    );
+
+    const { stdout, exitCode } = runCli(["ci", TEST_DIR, "--baseline-file", baselineFile]);
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("CI PASS");
   });
 });
