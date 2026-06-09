@@ -3,7 +3,8 @@
 import { Command } from "commander";
 import { resolve, dirname, extname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { writeFileSync, mkdirSync, readFileSync, watch as fsWatch, existsSync } from "node:fs";
+import { writeFileSync, mkdirSync, readFileSync, existsSync } from "node:fs";
+import chokidar from "chokidar";
 import { Scanner } from "./scanner.js";
 import { TestGenerator } from "./generator.js";
 import { OpenApiGenerator } from "./openapi.js";
@@ -64,9 +65,14 @@ async function resolveFramework(directory: string, explicitFramework?: string): 
 const WATCH_EXTENSIONS = new Set([".ts", ".js", ".py", ".go", ".java", ".kt", ".rs"]);
 
 /**
- * Start native fs.watch on a directory and call the callback on file changes,
+ * Start a chokidar watcher on a directory and call the callback on file changes,
  * debounced by the given delay (default 300 ms).
- * Returns a cleanup function that stops all watchers.
+ *
+ * chokidar is used instead of the native fs.watch because fs.watch has known
+ * reliability issues on macOS (events missed, paths not reported) and
+ * inconsistent recursive support across platforms.
+ *
+ * Returns a cleanup function that stops the watcher.
  */
 function startWatcher(
   directory: string,
@@ -75,16 +81,18 @@ function startWatcher(
 ): () => void {
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-  const watcher = fsWatch(directory, { recursive: true }, (eventType, filename) => {
-    if (!filename) return;
+  const watcher = chokidar.watch(directory, {
+    ignored: /(node_modules|dist|build|\.git)/,
+    persistent: true,
+    ignoreInitial: true,
+  });
 
-    // Only react to source-code file changes
-    const ext = extname(filename.toString());
+  const handleChange = (filePath: string) => {
+    const ext = extname(filePath);
     if (!WATCH_EXTENSIONS.has(ext)) return;
 
-    const displayPath = relative(directory, resolve(directory, filename.toString()));
+    const displayPath = relative(directory, filePath);
 
-    // Clear any pending debounce and restart
     if (debounceTimer !== null) {
       clearTimeout(debounceTimer);
     }
@@ -93,11 +101,15 @@ function startWatcher(
       debounceTimer = null;
       onChange(displayPath);
     }, debounceMs);
-  });
+  };
+
+  watcher.on("change", handleChange);
+  watcher.on("add", handleChange);
+  watcher.on("unlink", handleChange);
 
   return () => {
     if (debounceTimer !== null) clearTimeout(debounceTimer);
-    watcher.close();
+    void watcher.close();
   };
 }
 
@@ -310,15 +322,20 @@ program
     },
   );
 
+/** Serialize an endpoint to a stable identity key: METHOD:path */
+function endpointKey(ep: { method: string; path: string }): string {
+  return `${ep.method.toUpperCase()}:${ep.path}`;
+}
+
 program
   .command("ci")
-  .description("CI integration mode — compare endpoint count against a saved baseline")
+  .description("CI integration mode — compare endpoints against a saved baseline")
   .argument("<directory>", "Directory to scan for endpoints")
   .option(
     "-f, --framework <framework>",
     "Framework to scan for",
   )
-  .option("--update-baseline", "Save current endpoint count as the new baseline")
+  .option("--update-baseline", "Save current endpoints as the new baseline")
   .option(
     "--baseline-file <file>",
     "Path to the baseline JSON file",
@@ -341,14 +358,20 @@ program
       console.log(`Scanning ${dir} for ${framework} endpoints...`);
 
       const endpoints = await scanner.scan({ directory: dir, framework });
-      const currentCount = endpoints.length;
+      const currentKeys = new Set(endpoints.map(endpointKey));
+      const currentCount = currentKeys.size;
 
       console.log(`Found ${currentCount} endpoint(s).`);
 
       const baselinePath = resolve(options.baselineFile);
 
       if (options.updateBaseline) {
-        const baseline = { count: currentCount, framework, updatedAt: new Date().toISOString() };
+        const baseline = {
+          endpoints: [...currentKeys].sort(),
+          count: currentCount,
+          framework,
+          updatedAt: new Date().toISOString(),
+        };
         writeFileSync(baselinePath, JSON.stringify(baseline, null, 2));
         console.log(`Baseline updated: ${currentCount} endpoints saved to ${baselinePath}`);
         return;
@@ -356,30 +379,65 @@ program
 
       if (!existsSync(baselinePath)) {
         // First run — save baseline automatically
-        const baseline = { count: currentCount, framework, updatedAt: new Date().toISOString() };
+        const baseline = {
+          endpoints: [...currentKeys].sort(),
+          count: currentCount,
+          framework,
+          updatedAt: new Date().toISOString(),
+        };
         writeFileSync(baselinePath, JSON.stringify(baseline, null, 2));
         console.log(`No baseline found. Saved ${currentCount} endpoints as baseline to ${baselinePath}`);
         return;
       }
 
-      // Compare against existing baseline
+      // Compare against existing baseline by identity (method+path), not just count.
+      // This correctly catches the case where an endpoint is renamed/replaced:
+      // e.g. removing GET /users and adding POST /items still changes the set.
       const baselineData = JSON.parse(readFileSync(baselinePath, "utf-8")) as {
+        endpoints?: string[];
         count: number;
         framework?: string;
         updatedAt?: string;
       };
-      const baselineCount = baselineData.count;
 
-      if (currentCount < baselineCount) {
-        const diff = baselineCount - currentCount;
-        console.error(
-          `CI FAIL: Endpoint count dropped from ${baselineCount} (baseline) to ${currentCount} (current). ` +
-          `${diff} endpoint(s) removed. Run with --update-baseline to accept the new count.`,
-        );
-        process.exit(1);
+      // Support legacy baselines that only stored a count
+      const baselineKeys: Set<string> = baselineData.endpoints
+        ? new Set(baselineData.endpoints)
+        : new Set<string>();
+
+      if (baselineData.endpoints) {
+        // Identity-based comparison
+        const removed = [...baselineKeys].filter((k) => !currentKeys.has(k));
+        const added = [...currentKeys].filter((k) => !baselineKeys.has(k));
+
+        if (removed.length > 0) {
+          console.error(
+            `CI FAIL: ${removed.length} endpoint(s) removed since baseline:\n` +
+            removed.map((k) => `  - ${k}`).join("\n") +
+            (added.length > 0 ? `\n${added.length} new endpoint(s) added:\n` + added.map((k) => `  + ${k}`).join("\n") : "") +
+            `\nRun with --update-baseline to accept these changes.`,
+          );
+          process.exit(1);
+        }
+
+        if (added.length > 0) {
+          console.log(`CI PASS: ${currentCount} endpoints (baseline: ${baselineKeys.size}, +${added.length} new)`);
+        } else {
+          console.log(`CI PASS: ${currentCount} endpoints (baseline: ${baselineKeys.size})`);
+        }
+      } else {
+        // Legacy count-only baseline
+        const baselineCount = baselineData.count;
+        if (currentCount < baselineCount) {
+          const diff = baselineCount - currentCount;
+          console.error(
+            `CI FAIL: Endpoint count dropped from ${baselineCount} (baseline) to ${currentCount} (current). ` +
+            `${diff} endpoint(s) removed. Run with --update-baseline to accept the new count.`,
+          );
+          process.exit(1);
+        }
+        console.log(`CI PASS: ${currentCount} endpoints (baseline: ${baselineCount})`);
       }
-
-      console.log(`CI PASS: ${currentCount} endpoints (baseline: ${baselineCount})`);
     },
   );
 
