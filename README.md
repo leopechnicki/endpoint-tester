@@ -347,6 +347,31 @@ endpoint-tester ci ./src --baseline-file ci/baseline.json
 
 Exit codes: `0` = pass (count same or higher), `1` = fail (count dropped below baseline).
 
+## Config file
+
+Instead of repeating CLI flags on every run, you can set defaults in a `.endpointtesterrc` (or `.endpointtesterrc.json`) file in the root of the project you are scanning:
+
+```json
+{
+  "framework": "express",
+  "outputDir": "./tests/generated",
+  "testRunner": "vitest",
+  "baseUrl": "http://localhost:3000",
+  "exclude": ["legacy/**", "migrations/**"]
+}
+```
+
+CLI flags always override config file values. Supported fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `framework` | string | Override auto-detection (`express`, `fastapi`, `nestjs`, etc.) |
+| `outputDir` | string | Default output directory for generated tests |
+| `testRunner` | string | Default format (`vitest`, `jest`, `pytest`, `go`, `openapi`) |
+| `baseUrl` | string | Default base URL used in generated tests |
+| `exclude` | string[] | Glob patterns to exclude from scanning |
+| `include` | string[] | Additional glob patterns to include |
+
 ## Watch mode
 
 Re-scan and regenerate every time a source file changes:
