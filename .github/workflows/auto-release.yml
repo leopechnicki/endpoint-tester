@@ -13,6 +13,9 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.create_release.outputs.release_created }}
+      release_tag: ${{ steps.create_release.outputs.release_tag }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -70,8 +73,9 @@ jobs:
 
           RELEASE_CREATED=false
           if [ "$TAG_EXISTS" = "true" ]; then
-            echo "::warning::Tag/release ${RELEASE_VERSION} already exists — skipping release, opening bump PR only."
+            echo "::warning::Tag/release ${RELEASE_VERSION} already exists â€” skipping release, opening bump PR only."
             echo "release_created=false" >> "$GITHUB_OUTPUT"
+            echo "release_tag=" >> "$GITHUB_OUTPUT"
           else
             LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
             if [ -z "$LAST_TAG" ]; then
@@ -91,11 +95,12 @@ jobs:
               --target main
             RELEASE_CREATED=true
             echo "release_created=true" >> "$GITHUB_OUTPUT"
+            echo "release_tag=${RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
           fi
 
           BRANCH="chore/bump-version-v${NEXT_VERSION}"
           if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
-            echo "Bump branch ${BRANCH} already exists on origin — leaving existing PR in place."
+            echo "Bump branch ${BRANCH} already exists on origin â€” leaving existing PR in place."
             exit 0
           fi
 
@@ -119,34 +124,14 @@ jobs:
             echo "::notice::PR creation skipped (Actions not permitted). Open manually: https://github.com/${GITHUB_REPOSITORY}/compare/main...${BRANCH}"
           fi
 
-      # npm publish runs inline here rather than relying on publish.yml being
-      # triggered by the release event. GitHub Actions does NOT fire workflow
-      # triggers for releases created via a PAT or GITHUB_TOKEN — only releases
-      # created by a real user OAuth session propagate that event to other
-      # workflows. Publishing inline in the same job eliminates this
-      # anti-recursion limitation entirely.
-      - name: Install dependencies
-        if: steps.create_release.outputs.release_created == 'true'
-        run: npm ci
-
-      - name: Typecheck
-        if: steps.create_release.outputs.release_created == 'true'
-        run: npm run typecheck
-
-      - name: Lint
-        if: steps.create_release.outputs.release_created == 'true'
-        run: npm run lint
-
-      - name: Test
-        if: steps.create_release.outputs.release_created == 'true'
-        run: npm test
-
-      - name: Build
-        if: steps.create_release.outputs.release_created == 'true'
-        run: npm run build
-
-      - name: Publish to npm
-        if: steps.create_release.outputs.release_created == 'true'
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+  # Directly call publish.yml after the release is created.
+  # This bypasses the release:published event trigger entirely â€” GitHub Actions
+  # does NOT fire that event for releases created via GITHUB_TOKEN or PAT
+  # (anti-recursion protection). workflow_call is not subject to this restriction.
+  publish:
+    needs: release
+    if: needs.release.outputs.release_created == 'true'
+    uses: ./.github/workflows/publish.yml
+    with:
+      tag: ${{ needs.release.outputs.release_tag }}
+    secrets: inherit
