@@ -1,7 +1,22 @@
-import type { Adapter, Endpoint, EndpointParam, EndpointResponse, HttpMethod } from "../types.js";
-import { Framework } from "../types.js";
+import type {
+  Adapter,
+  Endpoint,
+  EndpointParam,
+  EndpointResponse,
+  HttpMethod,
+} from '../types.js';
+import { Framework } from '../types.js';
 
-const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options", "all"] as const;
+const HTTP_METHODS = [
+  'get',
+  'post',
+  'put',
+  'delete',
+  'patch',
+  'head',
+  'options',
+  'all',
+] as const;
 
 /**
  * Parses Express.js route definitions from source code.
@@ -16,11 +31,11 @@ const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"
  */
 export class ExpressAdapter implements Adapter {
   readonly framework = Framework.Express;
-  readonly fileExtensions = [".ts", ".js", ".mjs", ".cjs"];
+  readonly fileExtensions = ['.ts', '.js', '.mjs', '.cjs'];
 
   parse(source: string, filePath?: string): Endpoint[] {
     const endpoints: Endpoint[] = [];
-    const lines = source.split("\n");
+    const lines = source.split('\n');
 
     // Detect router prefix: router = express.Router() used with app.use('/prefix', router)
     const routerPrefixes = this.detectRouterPrefixes(source);
@@ -36,14 +51,25 @@ export class ExpressAdapter implements Adapter {
       }
 
       // Try regex route pattern: app.get(/^\/files\//, handler)
-      const regexParsed = this.parseRegexRoute(line, i + 1, filePath, routerPrefixes);
+      const regexParsed = this.parseRegexRoute(
+        line,
+        i + 1,
+        filePath,
+        routerPrefixes
+      );
       if (regexParsed) {
         endpoints.push(...regexParsed);
         continue;
       }
 
       // Try app.route('/path').get().post() chaining pattern
-      const routeChain = this.parseRouteChain(line, lines, i, filePath, routerPrefixes);
+      const routeChain = this.parseRouteChain(
+        line,
+        lines,
+        i,
+        filePath,
+        routerPrefixes
+      );
       if (routeChain.length > 0) {
         endpoints.push(...routeChain);
       }
@@ -59,12 +85,12 @@ export class ExpressAdapter implements Adapter {
     line: string,
     lineNumber: number,
     filePath?: string,
-    routerPrefixes?: Map<string, string>,
+    routerPrefixes?: Map<string, string>
   ): Endpoint[] | null {
     // Match: identifier.method('/path', ...)
     const methodPattern = new RegExp(
-      `(\\w+)\\.(${HTTP_METHODS.join("|")})\\s*\\(\\s*['"\`]([^'"\`]+)['"\`]`,
-      "i",
+      `(\\w+)\\.(${HTTP_METHODS.join('|')})\\s*\\(\\s*['"\`]([^'"\`]+)['"\`]`,
+      'i'
     );
     const match = line.match(methodPattern);
     if (!match) return null;
@@ -79,8 +105,8 @@ export class ExpressAdapter implements Adapter {
     }
 
     // Normalize path: ensure leading slash
-    if (!fullPath.startsWith("/")) {
-      fullPath = "/" + fullPath;
+    if (!fullPath.startsWith('/')) {
+      fullPath = '/' + fullPath;
     }
 
     // Extract handler name (last function argument)
@@ -90,8 +116,16 @@ export class ExpressAdapter implements Adapter {
     const params = this.extractParams(fullPath);
 
     // app.all() maps to all standard HTTP methods
-    if (method.toLowerCase() === "all") {
-      const allMethods: HttpMethod[] = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"];
+    if (method.toLowerCase() === 'all') {
+      const allMethods: HttpMethod[] = [
+        'GET',
+        'POST',
+        'PUT',
+        'DELETE',
+        'PATCH',
+        'HEAD',
+        'OPTIONS',
+      ];
       return allMethods.map((m) => ({
         method: m,
         path: fullPath,
@@ -102,14 +136,16 @@ export class ExpressAdapter implements Adapter {
       }));
     }
 
-    return [{
-      method: method.toUpperCase() as HttpMethod,
-      path: fullPath,
-      handler,
-      params,
-      file: filePath,
-      line: lineNumber,
-    }];
+    return [
+      {
+        method: method.toUpperCase() as HttpMethod,
+        path: fullPath,
+        handler,
+        params,
+        file: filePath,
+        line: lineNumber,
+      },
+    ];
   }
 
   /**
@@ -121,10 +157,12 @@ export class ExpressAdapter implements Adapter {
     allLines: string[],
     lineIndex: number,
     filePath?: string,
-    routerPrefixes?: Map<string, string>,
+    routerPrefixes?: Map<string, string>
   ): Endpoint[] {
     // Match: identifier.route('/path')
-    const routeMatch = line.match(/(\w+)\.route\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/);
+    const routeMatch = line.match(
+      /(\w+)\.route\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/
+    );
     if (!routeMatch) return [];
 
     const [, identifier, path] = routeMatch;
@@ -136,21 +174,27 @@ export class ExpressAdapter implements Adapter {
       const prefix = routerPrefixes.get(identifier)!;
       fullPath = prefix + path;
     }
-    if (!fullPath.startsWith("/")) {
-      fullPath = "/" + fullPath;
+    if (!fullPath.startsWith('/')) {
+      fullPath = '/' + fullPath;
     }
 
     const params = this.extractParams(fullPath);
 
     // Collect lines that are part of this chain (current line + continuation lines)
     let chainText = line;
-    for (let j = lineIndex + 1; j < Math.min(lineIndex + 10, allLines.length); j++) {
+    for (
+      let j = lineIndex + 1;
+      j < Math.min(lineIndex + 10, allLines.length);
+      j++
+    ) {
       const nextLine = allLines[j].trim();
       // If line starts with .method( it's a continuation
-      if (nextLine.match(/^\.(get|post|put|delete|patch|head|options|all)\s*\(/i)) {
-        chainText += " " + nextLine;
-      } else if (chainText.includes(".route(") && nextLine.startsWith(".")) {
-        chainText += " " + nextLine;
+      if (
+        nextLine.match(/^\.(get|post|put|delete|patch|head|options|all)\s*\(/i)
+      ) {
+        chainText += ' ' + nextLine;
+      } else if (chainText.includes('.route(') && nextLine.startsWith('.')) {
+        chainText += ' ' + nextLine;
       } else {
         break;
       }
@@ -158,19 +202,27 @@ export class ExpressAdapter implements Adapter {
 
     // Extract all .method() calls from the chain
     const methodCallPattern = new RegExp(
-      `\\.(${HTTP_METHODS.join("|")})\\s*\\(`,
-      "gi",
+      `\\.(${HTTP_METHODS.join('|')})\\s*\\(`,
+      'gi'
     );
     let methodMatch: RegExpExecArray | null;
     while ((methodMatch = methodCallPattern.exec(chainText)) !== null) {
       const chainedMethod = methodMatch[1].toLowerCase();
-      if (chainedMethod === "all") {
-        const allMethods: HttpMethod[] = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"];
+      if (chainedMethod === 'all') {
+        const allMethods: HttpMethod[] = [
+          'GET',
+          'POST',
+          'PUT',
+          'DELETE',
+          'PATCH',
+          'HEAD',
+          'OPTIONS',
+        ];
         for (const m of allMethods) {
           endpoints.push({
             method: m,
             path: fullPath,
-            handler: "<chained>",
+            handler: '<chained>',
             params: [...params],
             file: filePath,
             line: lineIndex + 1,
@@ -180,7 +232,7 @@ export class ExpressAdapter implements Adapter {
         endpoints.push({
           method: chainedMethod.toUpperCase() as HttpMethod,
           path: fullPath,
-          handler: "<chained>",
+          handler: '<chained>',
           params: [...params],
           file: filePath,
           line: lineIndex + 1,
@@ -198,13 +250,16 @@ export class ExpressAdapter implements Adapter {
     line: string,
     lineNumber: number,
     filePath?: string,
-    routerPrefixes?: Map<string, string>,
+    routerPrefixes?: Map<string, string>
   ): Endpoint[] | null {
     // Match: identifier.method(/regex/, handler)
     // The regex literal sits between ( / ... / , ) — we capture the content between slashes
-    const methodsGroup = HTTP_METHODS.join("|");
+    const methodsGroup = HTTP_METHODS.join('|');
     const regexMatch = line.match(
-      new RegExp(`(\\w+)\\.(${methodsGroup})\\s*\\(\\s*\\/([^\\/]*(?:\\\\\\/[^\\/]*)*)\\/\\s*,`, "i"),
+      new RegExp(
+        `(\\w+)\\.(${methodsGroup})\\s*\\(\\s*\\/([^\\/]*(?:\\\\\\/[^\\/]*)*)\\/\\s*,`,
+        'i'
+      )
     );
     if (!regexMatch) return null;
 
@@ -212,12 +267,12 @@ export class ExpressAdapter implements Adapter {
 
     // Convert regex to a readable path approximation
     let path = regexContent
-      .replace(/\\\//g, "/")     // unescape slashes (\/ → /)
-      .replace(/^\^/, "")        // remove start anchor
-      .replace(/\$$/, "");       // remove end anchor
+      .replace(/\\\//g, '/') // unescape slashes (\/ → /)
+      .replace(/^\^/, '') // remove start anchor
+      .replace(/\$$/, ''); // remove end anchor
 
     // Ensure leading slash
-    if (!path.startsWith("/")) path = "/" + path;
+    if (!path.startsWith('/')) path = '/' + path;
 
     let fullPath = path;
     if (routerPrefixes && identifier && routerPrefixes.has(identifier)) {
@@ -228,8 +283,16 @@ export class ExpressAdapter implements Adapter {
     const handler = this.extractHandler(line);
     const params = this.extractParams(fullPath);
 
-    if (method.toLowerCase() === "all") {
-      const allMethods: HttpMethod[] = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"];
+    if (method.toLowerCase() === 'all') {
+      const allMethods: HttpMethod[] = [
+        'GET',
+        'POST',
+        'PUT',
+        'DELETE',
+        'PATCH',
+        'HEAD',
+        'OPTIONS',
+      ];
       return allMethods.map((m) => ({
         method: m,
         path: fullPath,
@@ -240,14 +303,16 @@ export class ExpressAdapter implements Adapter {
       }));
     }
 
-    return [{
-      method: method.toUpperCase() as HttpMethod,
-      path: fullPath,
-      handler,
-      params: [...params],
-      file: filePath,
-      line: lineNumber,
-    }];
+    return [
+      {
+        method: method.toUpperCase() as HttpMethod,
+        path: fullPath,
+        handler,
+        params: [...params],
+        file: filePath,
+        line: lineNumber,
+      },
+    ];
   }
 
   private extractHandler(line: string): string {
@@ -257,11 +322,11 @@ export class ExpressAdapter implements Adapter {
     if (handlerMatch) return handlerMatch[1];
 
     // Inline arrow function or anonymous
-    if (line.includes("=>") || line.includes("function")) {
-      return "<anonymous>";
+    if (line.includes('=>') || line.includes('function')) {
+      return '<anonymous>';
     }
 
-    return "<unknown>";
+    return '<unknown>';
   }
 
   private extractParams(path: string): EndpointParam[] {
@@ -272,8 +337,8 @@ export class ExpressAdapter implements Adapter {
     while ((match = paramPattern.exec(path)) !== null) {
       params.push({
         name: match[1],
-        location: "path",
-        type: "string",
+        location: 'path',
+        type: 'string',
         required: true,
       });
     }
@@ -286,22 +351,29 @@ export class ExpressAdapter implements Adapter {
    * query params from req.query.x / req.query['x'] patterns,
    * and response fields from res.json({...}) / res.send({...}) patterns.
    */
-  private inferBodyAndQueryFromSource(source: string, endpoints: Endpoint[]): void {
+  private inferBodyAndQueryFromSource(
+    source: string,
+    endpoints: Endpoint[]
+  ): void {
     // Find handler blocks: from route definition to next route or end
     for (const ep of endpoints) {
       if (!ep.line || !ep.file) continue;
 
-      const lines = source.split("\n");
+      const lines = source.split('\n');
       const startLine = ep.line - 1;
       // Scan up to 50 lines after the route definition to find handler body
       const endLine = Math.min(startLine + 50, lines.length);
-      const handlerBlock = lines.slice(startLine, endLine).join("\n");
+      const handlerBlock = lines.slice(startLine, endLine).join('\n');
 
       // Infer body fields from req.body.field or req.body['field'] or destructuring
-      if (ep.method === "POST" || ep.method === "PUT" || ep.method === "PATCH") {
+      if (
+        ep.method === 'POST' ||
+        ep.method === 'PUT' ||
+        ep.method === 'PATCH'
+      ) {
         const bodyFields = this.inferBodyFields(handlerBlock);
         if (Object.keys(bodyFields).length > 0) {
-          ep.body = { type: "object", fields: bodyFields };
+          ep.body = { type: 'object', fields: bodyFields };
         }
       }
 
@@ -309,7 +381,9 @@ export class ExpressAdapter implements Adapter {
       const queryParams = this.inferQueryParams(handlerBlock);
       for (const qp of queryParams) {
         // Avoid duplicates
-        if (!ep.params.some(p => p.name === qp.name && p.location === "query")) {
+        if (
+          !ep.params.some((p) => p.name === qp.name && p.location === 'query')
+        ) {
           ep.params.push(qp);
         }
       }
@@ -329,22 +403,25 @@ export class ExpressAdapter implements Adapter {
     const dotPattern = /req\.body\.(\w+)/g;
     let match: RegExpExecArray | null;
     while ((match = dotPattern.exec(handlerBlock)) !== null) {
-      fields[match[1]] = "string"; // default type
+      fields[match[1]] = 'string'; // default type
     }
 
     // Pattern: req.body['fieldName'] or req.body["fieldName"]
     const bracketPattern = /req\.body\[['"](\w+)['"]\]/g;
     while ((match = bracketPattern.exec(handlerBlock)) !== null) {
-      fields[match[1]] = "string";
+      fields[match[1]] = 'string';
     }
 
     // Pattern: const { field1, field2 } = req.body
-    const destructurePattern = /(?:const|let|var)\s*\{([^}]+)\}\s*=\s*req\.body/g;
+    const destructurePattern =
+      /(?:const|let|var)\s*\{([^}]+)\}\s*=\s*req\.body/g;
     while ((match = destructurePattern.exec(handlerBlock)) !== null) {
-      const fieldList = match[1].split(",").map(f => f.trim().split(":")[0].split("=")[0].trim());
+      const fieldList = match[1]
+        .split(',')
+        .map((f) => f.trim().split(':')[0].split('=')[0].trim());
       for (const field of fieldList) {
         if (field && /^\w+$/.test(field)) {
-          fields[field] = "string";
+          fields[field] = 'string';
         }
       }
     }
@@ -362,7 +439,7 @@ export class ExpressAdapter implements Adapter {
     while ((match = dotPattern.exec(handlerBlock)) !== null) {
       if (!seen.has(match[1])) {
         seen.add(match[1]);
-        params.push({ name: match[1], location: "query", type: "string" });
+        params.push({ name: match[1], location: 'query', type: 'string' });
       }
     }
 
@@ -371,18 +448,21 @@ export class ExpressAdapter implements Adapter {
     while ((match = bracketPattern.exec(handlerBlock)) !== null) {
       if (!seen.has(match[1])) {
         seen.add(match[1]);
-        params.push({ name: match[1], location: "query", type: "string" });
+        params.push({ name: match[1], location: 'query', type: 'string' });
       }
     }
 
     // Pattern: const { param1, param2 } = req.query
-    const destructurePattern = /(?:const|let|var)\s*\{([^}]+)\}\s*=\s*req\.query/g;
+    const destructurePattern =
+      /(?:const|let|var)\s*\{([^}]+)\}\s*=\s*req\.query/g;
     while ((match = destructurePattern.exec(handlerBlock)) !== null) {
-      const fieldList = match[1].split(",").map(f => f.trim().split(":")[0].split("=")[0].trim());
+      const fieldList = match[1]
+        .split(',')
+        .map((f) => f.trim().split(':')[0].split('=')[0].trim());
       for (const field of fieldList) {
         if (field && /^\w+$/.test(field) && !seen.has(field)) {
           seen.add(field);
-          params.push({ name: field, location: "query", type: "string" });
+          params.push({ name: field, location: 'query', type: 'string' });
         }
       }
     }
@@ -402,7 +482,7 @@ export class ExpressAdapter implements Adapter {
     const keyPattern = /(\w+)\s*:/g;
     let keyMatch: RegExpExecArray | null;
     while ((keyMatch = keyPattern.exec(content)) !== null) {
-      fields[keyMatch[1]] = "string";
+      fields[keyMatch[1]] = 'string';
     }
 
     if (Object.keys(fields).length === 0) return null;

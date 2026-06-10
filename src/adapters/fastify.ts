@@ -1,7 +1,21 @@
-import type { Adapter, Endpoint, EndpointParam, EndpointResponse, HttpMethod } from "../types.js";
-import { Framework } from "../types.js";
+import type {
+  Adapter,
+  Endpoint,
+  EndpointParam,
+  EndpointResponse,
+  HttpMethod,
+} from '../types.js';
+import { Framework } from '../types.js';
 
-const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"] as const;
+const HTTP_METHODS = [
+  'get',
+  'post',
+  'put',
+  'delete',
+  'patch',
+  'head',
+  'options',
+] as const;
 
 /**
  * Parses Fastify route definitions from source code.
@@ -15,11 +29,11 @@ const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"
  */
 export class FastifyAdapter implements Adapter {
   readonly framework = Framework.Fastify;
-  readonly fileExtensions = [".ts", ".js", ".mjs", ".cjs"];
+  readonly fileExtensions = ['.ts', '.js', '.mjs', '.cjs'];
 
   parse(source: string, filePath?: string): Endpoint[] {
     const endpoints: Endpoint[] = [];
-    const lines = source.split("\n");
+    const lines = source.split('\n');
 
     const prefixes = this.detectPrefixes(source);
 
@@ -50,11 +64,11 @@ export class FastifyAdapter implements Adapter {
     line: string,
     lineNumber: number,
     filePath?: string,
-    prefixes?: Map<string, string>,
+    prefixes?: Map<string, string>
   ): Endpoint[] | null {
     const pattern = new RegExp(
-      `(\\w+)\\.(${HTTP_METHODS.join("|")})\\s*\\(\\s*['"\`]([^'"\`]+)['"\`]`,
-      "i",
+      `(\\w+)\\.(${HTTP_METHODS.join('|')})\\s*\\(\\s*['"\`]([^'"\`]+)['"\`]`,
+      'i'
     );
     const match = line.match(pattern);
     if (!match) return null;
@@ -65,19 +79,21 @@ export class FastifyAdapter implements Adapter {
     if (prefixes && identifier && prefixes.has(identifier)) {
       fullPath = prefixes.get(identifier)! + path;
     }
-    if (!fullPath.startsWith("/")) fullPath = "/" + fullPath;
+    if (!fullPath.startsWith('/')) fullPath = '/' + fullPath;
 
     const params = this.extractParams(fullPath);
     const handler = this.extractHandler(line);
 
-    return [{
-      method: method.toUpperCase() as HttpMethod,
-      path: fullPath,
-      handler,
-      params,
-      file: filePath,
-      line: lineNumber,
-    }];
+    return [
+      {
+        method: method.toUpperCase() as HttpMethod,
+        path: fullPath,
+        handler,
+        params,
+        file: filePath,
+        line: lineNumber,
+      },
+    ];
   }
 
   private parseFullRoute(
@@ -85,16 +101,20 @@ export class FastifyAdapter implements Adapter {
     allLines: string[],
     lineIndex: number,
     filePath?: string,
-    _prefixes?: Map<string, string>,
+    _prefixes?: Map<string, string>
   ): Endpoint | null {
     // Match: identifier.route({ ... })
     if (!line.match(/\w+\.route\s*\(/)) return null;
 
     // Collect multi-line block
-    let block = "";
-    for (let j = lineIndex; j < Math.min(lineIndex + 20, allLines.length); j++) {
-      block += allLines[j] + "\n";
-      if (allLines[j].includes("})") || allLines[j].includes("});")) break;
+    let block = '';
+    for (
+      let j = lineIndex;
+      j < Math.min(lineIndex + 20, allLines.length);
+      j++
+    ) {
+      block += allLines[j] + '\n';
+      if (allLines[j].includes('})') || allLines[j].includes('});')) break;
     }
 
     // Extract method
@@ -106,14 +126,14 @@ export class FastifyAdapter implements Adapter {
     if (!urlMatch) return null;
 
     let fullPath = urlMatch[1];
-    if (!fullPath.startsWith("/")) fullPath = "/" + fullPath;
+    if (!fullPath.startsWith('/')) fullPath = '/' + fullPath;
 
     const params = this.extractParams(fullPath);
 
     return {
       method: methodMatch[1].toUpperCase() as HttpMethod,
       path: fullPath,
-      handler: "<route>",
+      handler: '<route>',
       params,
       file: filePath,
       line: lineIndex + 1,
@@ -125,7 +145,12 @@ export class FastifyAdapter implements Adapter {
     const paramPattern = /:(\w+)/g;
     let match: RegExpExecArray | null;
     while ((match = paramPattern.exec(path)) !== null) {
-      params.push({ name: match[1], location: "path", type: "string", required: true });
+      params.push({
+        name: match[1],
+        location: 'path',
+        type: 'string',
+        required: true,
+      });
     }
     return params;
   }
@@ -133,8 +158,8 @@ export class FastifyAdapter implements Adapter {
   private extractHandler(line: string): string {
     const handlerMatch = line.match(/,\s*(\w+)\s*\)?\s*;?\s*$/);
     if (handlerMatch) return handlerMatch[1];
-    if (line.includes("=>") || line.includes("function")) return "<anonymous>";
-    return "<unknown>";
+    if (line.includes('=>') || line.includes('function')) return '<anonymous>';
+    return '<unknown>';
   }
 
   private detectPrefixes(_source: string): Map<string, string> {
@@ -146,23 +171,29 @@ export class FastifyAdapter implements Adapter {
   private inferFromSource(source: string, endpoints: Endpoint[]): void {
     for (const ep of endpoints) {
       if (!ep.line) continue;
-      const lines = source.split("\n");
+      const lines = source.split('\n');
       const startLine = ep.line - 1;
       const endLine = Math.min(startLine + 50, lines.length);
-      const block = lines.slice(startLine, endLine).join("\n");
+      const block = lines.slice(startLine, endLine).join('\n');
 
       // Infer body fields
-      if (ep.method === "POST" || ep.method === "PUT" || ep.method === "PATCH") {
+      if (
+        ep.method === 'POST' ||
+        ep.method === 'PUT' ||
+        ep.method === 'PATCH'
+      ) {
         const fields = this.inferBodyFields(block);
         if (Object.keys(fields).length > 0) {
-          ep.body = { type: "object", fields };
+          ep.body = { type: 'object', fields };
         }
       }
 
       // Infer query params
       const queryParams = this.inferQueryParams(block);
       for (const qp of queryParams) {
-        if (!ep.params.some(p => p.name === qp.name && p.location === "query")) {
+        if (
+          !ep.params.some((p) => p.name === qp.name && p.location === 'query')
+        ) {
           ep.params.push(qp);
         }
       }
@@ -179,13 +210,16 @@ export class FastifyAdapter implements Adapter {
     const dotPattern = /(?:req|request)\.body\.(\w+)/g;
     let match: RegExpExecArray | null;
     while ((match = dotPattern.exec(block)) !== null) {
-      fields[match[1]] = "string";
+      fields[match[1]] = 'string';
     }
     // const { x, y } = req.body or request.body
-    const destructPattern = /(?:const|let|var)\s*\{([^}]+)\}\s*=\s*(?:req|request)\.body/g;
+    const destructPattern =
+      /(?:const|let|var)\s*\{([^}]+)\}\s*=\s*(?:req|request)\.body/g;
     while ((match = destructPattern.exec(block)) !== null) {
-      for (const f of match[1].split(",").map(s => s.trim().split(":")[0].split("=")[0].trim())) {
-        if (f && /^\w+$/.test(f)) fields[f] = "string";
+      for (const f of match[1]
+        .split(',')
+        .map((s) => s.trim().split(':')[0].split('=')[0].trim())) {
+        if (f && /^\w+$/.test(f)) fields[f] = 'string';
       }
     }
     // Fastify schema: properties: { name: { type: 'string' }, age: { type: 'number' } }
@@ -193,7 +227,18 @@ export class FastifyAdapter implements Adapter {
     const propPattern = /(\w+)\s*:\s*\{\s*type\s*:\s*['"](\w+)['"]\s*\}/g;
     while ((match = propPattern.exec(block)) !== null) {
       // Skip non-field keys like "body", "response", "querystring"
-      if (!["body", "response", "querystring", "params", "headers", "type", "object", "array"].includes(match[1])) {
+      if (
+        ![
+          'body',
+          'response',
+          'querystring',
+          'params',
+          'headers',
+          'type',
+          'object',
+          'array',
+        ].includes(match[1])
+      ) {
         fields[match[1]] = match[2];
       }
     }
@@ -208,7 +253,7 @@ export class FastifyAdapter implements Adapter {
     while ((match = dotPattern.exec(block)) !== null) {
       if (!seen.has(match[1])) {
         seen.add(match[1]);
-        params.push({ name: match[1], location: "query", type: "string" });
+        params.push({ name: match[1], location: 'query', type: 'string' });
       }
     }
     return params;
@@ -222,7 +267,7 @@ export class FastifyAdapter implements Adapter {
     const keyPattern = /(\w+)\s*:/g;
     let keyMatch: RegExpExecArray | null;
     while ((keyMatch = keyPattern.exec(match[1])) !== null) {
-      fields[keyMatch[1]] = "string";
+      fields[keyMatch[1]] = 'string';
     }
     if (Object.keys(fields).length === 0) return null;
     return { fields };

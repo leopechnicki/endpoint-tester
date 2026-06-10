@@ -1,10 +1,10 @@
-import { describe, it, expect } from "vitest";
-import { FastAPIAdapter } from "../../src/adapters/fastapi.js";
+import { describe, it, expect } from 'vitest';
+import { FastAPIAdapter } from '../../src/adapters/fastapi.js';
 
-describe("FastAPIAdapter — prefix detection with non-first kwargs", () => {
+describe('FastAPIAdapter — prefix detection with non-first kwargs', () => {
   const adapter = new FastAPIAdapter();
 
-  it("should detect prefix when it is not the first kwarg", () => {
+  it('should detect prefix when it is not the first kwarg', () => {
     const source = `
 router = APIRouter(tags=["users"], prefix="/api/users")
 
@@ -19,11 +19,11 @@ async def get_user(user_id: int):
     const endpoints = adapter.parse(source);
 
     expect(endpoints).toHaveLength(2);
-    expect(endpoints[0].path).toBe("/api/users/");
-    expect(endpoints[1].path).toBe("/api/users/:user_id");
+    expect(endpoints[0].path).toBe('/api/users/');
+    expect(endpoints[1].path).toBe('/api/users/:user_id');
   });
 
-  it("should detect prefix when followed by other kwargs", () => {
+  it('should detect prefix when followed by other kwargs', () => {
     const source = `
 router = APIRouter(dependencies=[Depends(auth)], prefix="/v2/items", tags=["items"])
 
@@ -34,11 +34,11 @@ async def create_item(item: Item):
     const endpoints = adapter.parse(source);
 
     expect(endpoints).toHaveLength(1);
-    expect(endpoints[0].path).toBe("/v2/items/");
-    expect(endpoints[0].method).toBe("POST");
+    expect(endpoints[0].path).toBe('/v2/items/');
+    expect(endpoints[0].method).toBe('POST');
   });
 
-  it("should still detect prefix as first kwarg", () => {
+  it('should still detect prefix as first kwarg', () => {
     const source = `
 router = APIRouter(prefix="/api/v1")
 
@@ -49,10 +49,10 @@ async def health():
     const endpoints = adapter.parse(source);
 
     expect(endpoints).toHaveLength(1);
-    expect(endpoints[0].path).toBe("/api/v1/health");
+    expect(endpoints[0].path).toBe('/api/v1/health');
   });
 
-  it("should handle APIRouter with no prefix", () => {
+  it('should handle APIRouter with no prefix', () => {
     const source = `
 router = APIRouter(tags=["misc"])
 
@@ -63,6 +63,6 @@ async def ping():
     const endpoints = adapter.parse(source);
 
     expect(endpoints).toHaveLength(1);
-    expect(endpoints[0].path).toBe("/ping");
+    expect(endpoints[0].path).toBe('/ping');
   });
 });

@@ -1,7 +1,15 @@
-import type { Adapter, Endpoint, EndpointParam, HttpMethod } from "../types.js";
-import { Framework } from "../types.js";
+import type { Adapter, Endpoint, EndpointParam, HttpMethod } from '../types.js';
+import { Framework } from '../types.js';
 
-const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"] as const;
+const HTTP_METHODS = [
+  'get',
+  'post',
+  'put',
+  'delete',
+  'patch',
+  'head',
+  'options',
+] as const;
 
 /**
  * Parses FastAPI route definitions from Python source code.
@@ -14,11 +22,11 @@ const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"
  */
 export class FastAPIAdapter implements Adapter {
   readonly framework = Framework.FastAPI;
-  readonly fileExtensions = [".py"];
+  readonly fileExtensions = ['.py'];
 
   parse(source: string, filePath?: string): Endpoint[] {
     const endpoints: Endpoint[] = [];
-    const lines = source.split("\n");
+    const lines = source.split('\n');
 
     // Detect router prefix: router = APIRouter(prefix="/prefix")
     const routerPrefixes = this.detectRouterPrefixes(source);
@@ -39,13 +47,13 @@ export class FastAPIAdapter implements Adapter {
     allLines: string[],
     lineIndex: number,
     filePath?: string,
-    routerPrefixes?: Map<string, string>,
+    routerPrefixes?: Map<string, string>
   ): Endpoint | null {
     // Match: @identifier.method("/path") or @identifier.method("/path", ...)
     // Also handle the case where the path is on the same line as the decorator
     const decoratorPattern = new RegExp(
-      `@(\\w+)\\.(${HTTP_METHODS.join("|")})\\s*\\(`,
-      "i",
+      `@(\\w+)\\.(${HTTP_METHODS.join('|')})\\s*\\(`,
+      'i'
     );
     const decoratorMatch = line.match(decoratorPattern);
     if (!decoratorMatch) return null;
@@ -56,24 +64,24 @@ export class FastAPIAdapter implements Adapter {
     let decoratorText = line;
     let openParens = 0;
     for (let c = 0; c < decoratorText.length; c++) {
-      if (decoratorText[c] === "(") openParens++;
-      if (decoratorText[c] === ")") openParens--;
+      if (decoratorText[c] === '(') openParens++;
+      if (decoratorText[c] === ')') openParens--;
     }
 
     // If parentheses aren't balanced, continue collecting lines
     let j = lineIndex + 1;
     while (openParens > 0 && j < Math.min(lineIndex + 10, allLines.length)) {
-      decoratorText += " " + allLines[j].trim();
+      decoratorText += ' ' + allLines[j].trim();
       for (let c = 0; c < allLines[j].length; c++) {
-        if (allLines[j][c] === "(") openParens++;
-        if (allLines[j][c] === ")") openParens--;
+        if (allLines[j][c] === '(') openParens++;
+        if (allLines[j][c] === ')') openParens--;
       }
       j++;
     }
 
     // Extract the path from the full decorator text
     const pathMatch = decoratorText.match(
-      new RegExp(`@${identifier}\\.${method}\\s*\\(\\s*['"]([^'"]+)['"]`, "i"),
+      new RegExp(`@${identifier}\\.${method}\\s*\\(\\s*['"]([^'"]+)['"]`, 'i')
     );
     if (!pathMatch) return null;
 
@@ -87,12 +95,12 @@ export class FastAPIAdapter implements Adapter {
     }
 
     // Normalize: ensure leading slash
-    if (!fullPath.startsWith("/")) {
-      fullPath = "/" + fullPath;
+    if (!fullPath.startsWith('/')) {
+      fullPath = '/' + fullPath;
     }
 
     // Convert FastAPI {param} to :param for consistency
-    const normalizedPath = fullPath.replace(/\{(\w+)\}/g, ":$1");
+    const normalizedPath = fullPath.replace(/\{(\w+)\}/g, ':$1');
 
     // Extract handler name from next line (def function_name)
     const handler = this.extractHandler(allLines, lineIndex);
@@ -112,11 +120,15 @@ export class FastAPIAdapter implements Adapter {
 
   private extractHandler(lines: string[], decoratorIndex: number): string {
     // Look at lines after the decorator for `def function_name`
-    for (let i = decoratorIndex + 1; i < Math.min(decoratorIndex + 10, lines.length); i++) {
+    for (
+      let i = decoratorIndex + 1;
+      i < Math.min(decoratorIndex + 10, lines.length);
+      i++
+    ) {
       const defMatch = lines[i].match(/^\s*(?:async\s+)?def\s+(\w+)/);
       if (defMatch) return defMatch[1];
     }
-    return "<unknown>";
+    return '<unknown>';
   }
 
   private extractParams(path: string): EndpointParam[] {
@@ -127,8 +139,8 @@ export class FastAPIAdapter implements Adapter {
     while ((match = paramPattern.exec(path)) !== null) {
       params.push({
         name: match[1],
-        location: "path",
-        type: "string",
+        location: 'path',
+        type: 'string',
         required: true,
       });
     }
@@ -138,7 +150,7 @@ export class FastAPIAdapter implements Adapter {
 
   private detectRouterPrefixes(source: string): Map<string, string> {
     const prefixes = new Map<string, string>();
-    const lines = source.split("\n");
+    const lines = source.split('\n');
 
     for (const line of lines) {
       // Match: identifier = APIRouter(...)

@@ -1,10 +1,10 @@
-import { describe, it, expect } from "vitest";
-import { FlaskAdapter } from "../../src/adapters/flask.js";
+import { describe, it, expect } from 'vitest';
+import { FlaskAdapter } from '../../src/adapters/flask.js';
 
-describe("FlaskAdapter", () => {
+describe('FlaskAdapter', () => {
   const adapter = new FlaskAdapter();
 
-  it("should parse @app.route with default GET", () => {
+  it('should parse @app.route with default GET', () => {
     const source = `
 @app.route('/users')
 def get_users():
@@ -13,12 +13,12 @@ def get_users():
     const endpoints = adapter.parse(source);
 
     expect(endpoints).toHaveLength(1);
-    expect(endpoints[0].method).toBe("GET");
-    expect(endpoints[0].path).toBe("/users");
-    expect(endpoints[0].handler).toBe("get_users");
+    expect(endpoints[0].method).toBe('GET');
+    expect(endpoints[0].path).toBe('/users');
+    expect(endpoints[0].handler).toBe('get_users');
   });
 
-  it("should parse @app.route with explicit methods", () => {
+  it('should parse @app.route with explicit methods', () => {
     const source = `
 @app.route('/users', methods=['GET', 'POST'])
 def users():
@@ -27,12 +27,12 @@ def users():
     const endpoints = adapter.parse(source);
 
     expect(endpoints).toHaveLength(2);
-    expect(endpoints[0].method).toBe("GET");
-    expect(endpoints[1].method).toBe("POST");
-    expect(endpoints[0].handler).toBe("users");
+    expect(endpoints[0].method).toBe('GET');
+    expect(endpoints[1].method).toBe('POST');
+    expect(endpoints[0].handler).toBe('users');
   });
 
-  it("should parse shorthand @app.get and @app.post", () => {
+  it('should parse shorthand @app.get and @app.post', () => {
     const source = `
 @app.get('/items')
 def list_items():
@@ -45,12 +45,12 @@ def create_item():
     const endpoints = adapter.parse(source);
 
     expect(endpoints).toHaveLength(2);
-    expect(endpoints[0].method).toBe("GET");
-    expect(endpoints[0].path).toBe("/items");
-    expect(endpoints[1].method).toBe("POST");
+    expect(endpoints[0].method).toBe('GET');
+    expect(endpoints[0].path).toBe('/items');
+    expect(endpoints[1].method).toBe('POST');
   });
 
-  it("should parse typed path parameters", () => {
+  it('should parse typed path parameters', () => {
     const source = `
 @app.get('/users/<int:user_id>')
 def get_user(user_id):
@@ -59,13 +59,13 @@ def get_user(user_id):
     const endpoints = adapter.parse(source);
 
     expect(endpoints).toHaveLength(1);
-    expect(endpoints[0].path).toBe("/users/:user_id");
+    expect(endpoints[0].path).toBe('/users/:user_id');
     expect(endpoints[0].params).toHaveLength(1);
-    expect(endpoints[0].params[0].name).toBe("user_id");
-    expect(endpoints[0].params[0].type).toBe("number");
+    expect(endpoints[0].params[0].name).toBe('user_id');
+    expect(endpoints[0].params[0].type).toBe('number');
   });
 
-  it("should parse simple path parameters", () => {
+  it('should parse simple path parameters', () => {
     const source = `
 @app.get('/posts/<slug>')
 def get_post(slug):
@@ -73,12 +73,12 @@ def get_post(slug):
 `;
     const endpoints = adapter.parse(source);
 
-    expect(endpoints[0].path).toBe("/posts/:slug");
-    expect(endpoints[0].params[0].name).toBe("slug");
-    expect(endpoints[0].params[0].type).toBe("string");
+    expect(endpoints[0].path).toBe('/posts/:slug');
+    expect(endpoints[0].params[0].name).toBe('slug');
+    expect(endpoints[0].params[0].type).toBe('string');
   });
 
-  it("should detect Blueprint url_prefix", () => {
+  it('should detect Blueprint url_prefix', () => {
     const source = `
 bp = Blueprint('api', __name__, url_prefix='/api/v1')
 
@@ -89,10 +89,10 @@ def list_users():
     const endpoints = adapter.parse(source);
 
     expect(endpoints).toHaveLength(1);
-    expect(endpoints[0].path).toBe("/api/v1/users");
+    expect(endpoints[0].path).toBe('/api/v1/users');
   });
 
-  it("should parse multiple routes", () => {
+  it('should parse multiple routes', () => {
     const source = `
 @app.get('/health')
 def health():
@@ -113,10 +113,15 @@ def delete_user(id):
     const endpoints = adapter.parse(source);
 
     expect(endpoints).toHaveLength(4);
-    expect(endpoints.map((e) => e.method)).toEqual(["GET", "GET", "POST", "DELETE"]);
+    expect(endpoints.map((e) => e.method)).toEqual([
+      'GET',
+      'GET',
+      'POST',
+      'DELETE',
+    ]);
   });
 
-  it("should handle async def functions", () => {
+  it('should handle async def functions', () => {
     const source = `
 @app.get('/async')
 async def async_handler():
@@ -125,20 +130,20 @@ async def async_handler():
     const endpoints = adapter.parse(source);
 
     expect(endpoints).toHaveLength(1);
-    expect(endpoints[0].handler).toBe("async_handler");
+    expect(endpoints[0].handler).toBe('async_handler');
   });
 
-  it("should include file path and line number", () => {
+  it('should include file path and line number', () => {
     const source = `@app.get('/test')
 def test():
     pass`;
-    const endpoints = adapter.parse(source, "app/routes.py");
+    const endpoints = adapter.parse(source, 'app/routes.py');
 
-    expect(endpoints[0].file).toBe("app/routes.py");
+    expect(endpoints[0].file).toBe('app/routes.py');
     expect(endpoints[0].line).toBe(1);
   });
 
-  it("should return empty array for non-Flask code", () => {
+  it('should return empty array for non-Flask code', () => {
     const source = `
 def hello():
     print("hello world")
@@ -147,43 +152,43 @@ def hello():
     expect(endpoints).toHaveLength(0);
   });
 
-  describe("add_url_rule()", () => {
-    it("should parse add_url_rule with methods", () => {
+  describe('add_url_rule()', () => {
+    it('should parse add_url_rule with methods', () => {
       const source = `
 app.add_url_rule('/users', 'user_list', get_users, methods=['GET', 'POST'])
 `;
       const endpoints = adapter.parse(source);
 
       expect(endpoints).toHaveLength(2);
-      expect(endpoints[0].method).toBe("GET");
-      expect(endpoints[1].method).toBe("POST");
-      expect(endpoints[0].path).toBe("/users");
-      expect(endpoints[0].handler).toBe("get_users");
+      expect(endpoints[0].method).toBe('GET');
+      expect(endpoints[1].method).toBe('POST');
+      expect(endpoints[0].path).toBe('/users');
+      expect(endpoints[0].handler).toBe('get_users');
     });
 
-    it("should parse add_url_rule with view_func keyword", () => {
+    it('should parse add_url_rule with view_func keyword', () => {
       const source = `
 app.add_url_rule('/items', 'items', view_func=list_items)
 `;
       const endpoints = adapter.parse(source);
 
       expect(endpoints).toHaveLength(1);
-      expect(endpoints[0].handler).toBe("list_items");
+      expect(endpoints[0].handler).toBe('list_items');
     });
 
-    it("should parse add_url_rule with path params", () => {
+    it('should parse add_url_rule with path params', () => {
       const source = `
 app.add_url_rule('/users/<int:id>', 'user_detail', get_user)
 `;
       const endpoints = adapter.parse(source);
 
       expect(endpoints).toHaveLength(1);
-      expect(endpoints[0].path).toBe("/users/:id");
+      expect(endpoints[0].path).toBe('/users/:id');
       expect(endpoints[0].params).toHaveLength(1);
-      expect(endpoints[0].params[0].name).toBe("id");
+      expect(endpoints[0].params[0].name).toBe('id');
     });
 
-    it("should parse add_url_rule with Blueprint prefix", () => {
+    it('should parse add_url_rule with Blueprint prefix', () => {
       const source = `
 bp = Blueprint('api', __name__, url_prefix='/api/v1')
 bp.add_url_rule('/users', 'user_list', get_users)
@@ -191,12 +196,12 @@ bp.add_url_rule('/users', 'user_list', get_users)
       const endpoints = adapter.parse(source);
 
       expect(endpoints).toHaveLength(1);
-      expect(endpoints[0].path).toBe("/api/v1/users");
+      expect(endpoints[0].path).toBe('/api/v1/users');
     });
   });
 
-  describe("MethodView", () => {
-    it("should detect MethodView and infer HTTP methods", () => {
+  describe('MethodView', () => {
+    it('should detect MethodView and infer HTTP methods', () => {
       const source = `
 class UserView(MethodView):
     def get(self):
@@ -210,13 +215,13 @@ app.add_url_rule('/users', view_func=UserView.as_view('users'))
       const endpoints = adapter.parse(source);
 
       expect(endpoints).toHaveLength(2);
-      expect(endpoints[0].method).toBe("GET");
-      expect(endpoints[1].method).toBe("POST");
-      expect(endpoints[0].path).toBe("/users");
-      expect(endpoints[0].handler).toBe("UserView");
+      expect(endpoints[0].method).toBe('GET');
+      expect(endpoints[1].method).toBe('POST');
+      expect(endpoints[0].path).toBe('/users');
+      expect(endpoints[0].handler).toBe('UserView');
     });
 
-    it("should handle MethodView with async methods", () => {
+    it('should handle MethodView with async methods', () => {
       const source = `
 class ItemView(MethodView):
     async def get(self):
@@ -233,7 +238,7 @@ app.add_url_rule('/items/<int:id>', view_func=ItemView.as_view('item'))
       const endpoints = adapter.parse(source);
 
       expect(endpoints).toHaveLength(3);
-      expect(endpoints.map(e => e.method)).toEqual(["GET", "PUT", "DELETE"]);
+      expect(endpoints.map((e) => e.method)).toEqual(['GET', 'PUT', 'DELETE']);
     });
   });
 });

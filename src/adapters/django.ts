@@ -1,5 +1,5 @@
-import type { Adapter, Endpoint, EndpointParam, HttpMethod } from "../types.js";
-import { Framework } from "../types.js";
+import type { Adapter, Endpoint, EndpointParam, HttpMethod } from '../types.js';
+import { Framework } from '../types.js';
 
 /**
  * Parses Django URL patterns from Python source code.
@@ -11,11 +11,11 @@ import { Framework } from "../types.js";
  */
 export class DjangoAdapter implements Adapter {
   readonly framework = Framework.Django;
-  readonly fileExtensions = [".py"];
+  readonly fileExtensions = ['.py'];
 
   parse(source: string, filePath?: string): Endpoint[] {
     const endpoints: Endpoint[] = [];
-    const lines = source.split("\n");
+    const lines = source.split('\n');
 
     // Detect view classes and their HTTP methods from the same file
     const viewMethods = this.detectViewMethods(source);
@@ -35,26 +35,38 @@ export class DjangoAdapter implements Adapter {
     line: string,
     lineIndex: number,
     filePath?: string,
-    viewMethods?: Map<string, HttpMethod[]>,
+    viewMethods?: Map<string, HttpMethod[]>
   ): Endpoint[] | null {
     const trimmed = line.trim();
 
     // Match: path('route/', view, ...)
     const pathMatch = trimmed.match(
-      /path\s*\(\s*['"]([^'"]*)['"]\s*,\s*([\w.]+)/,
+      /path\s*\(\s*['"]([^'"]*)['"]\s*,\s*([\w.]+)/
     );
     if (pathMatch) {
       const [, route, handler] = pathMatch;
-      return this.createEndpointsFromDjangoPath(route, handler, lineIndex, filePath, viewMethods);
+      return this.createEndpointsFromDjangoPath(
+        route,
+        handler,
+        lineIndex,
+        filePath,
+        viewMethods
+      );
     }
 
     // Match: re_path(r'pattern', view, ...)
     const rePathMatch = trimmed.match(
-      /re_path\s*\(\s*r?['"]([^'"]*)['"]\s*,\s*([\w.]+)/,
+      /re_path\s*\(\s*r?['"]([^'"]*)['"]\s*,\s*([\w.]+)/
     );
     if (rePathMatch) {
       const [, route, handler] = rePathMatch;
-      return this.createEndpointsFromDjangoPath(route, handler, lineIndex, filePath, viewMethods);
+      return this.createEndpointsFromDjangoPath(
+        route,
+        handler,
+        lineIndex,
+        filePath,
+        viewMethods
+      );
     }
 
     return null;
@@ -65,11 +77,11 @@ export class DjangoAdapter implements Adapter {
     handler: string,
     lineIndex: number,
     filePath?: string,
-    viewMethods?: Map<string, HttpMethod[]>,
+    viewMethods?: Map<string, HttpMethod[]>
   ): Endpoint[] {
     // Normalize path
-    let normalizedPath = "/" + route.replace(/^\^/, "").replace(/\$$/, "");
-    normalizedPath = normalizedPath.replace(/\/+/g, "/");
+    let normalizedPath = '/' + route.replace(/^\^/, '').replace(/\$$/, '');
+    normalizedPath = normalizedPath.replace(/\/+/g, '/');
 
     // Extract Django path parameters: <type:name> or <name>
     const params = this.extractParams(route);
@@ -77,22 +89,24 @@ export class DjangoAdapter implements Adapter {
     // Replace Django param syntax with :param
     // Named groups (?P<name>...) must be replaced first, before <name> patterns
     normalizedPath = normalizedPath
-      .replace(/\(\?P<(\w+)>[^)]*\)/g, ":$1")
-      .replace(/<\w+:(\w+)>/g, ":$1")
-      .replace(/<(\w+)>/g, ":$1");
+      .replace(/\(\?P<(\w+)>[^)]*\)/g, ':$1')
+      .replace(/<\w+:(\w+)>/g, ':$1')
+      .replace(/<(\w+)>/g, ':$1');
 
     // Extract handler short name (strip .as_view suffix)
-    const cleanHandler = handler.replace(/\.as_view$/, "");
-    const handlerName = cleanHandler.includes(".")
-      ? cleanHandler.split(".").pop()!
+    const cleanHandler = handler.replace(/\.as_view$/, '');
+    const handlerName = cleanHandler.includes('.')
+      ? cleanHandler.split('.').pop()!
       : cleanHandler;
 
     // Check if handler references a view class with .as_view()
     // Also check viewMethods map for class-based views
     // Handler may be "UserView.as_view" (parens cut by regex) or "UserView"
-    const viewClassName = handler.replace(/\.as_view$/, "")
-      .replace(/\.as_view\s*\(.*\)/, "")
-      .split(".").pop()!;
+    const viewClassName = handler
+      .replace(/\.as_view$/, '')
+      .replace(/\.as_view\s*\(.*\)/, '')
+      .split('.')
+      .pop()!;
 
     const inferredMethods = viewMethods?.get(viewClassName);
     if (inferredMethods && inferredMethods.length > 0) {
@@ -107,14 +121,16 @@ export class DjangoAdapter implements Adapter {
     }
 
     // Default to GET if we can't infer methods
-    return [{
-      method: "GET" as HttpMethod,
-      path: normalizedPath,
-      handler: handlerName,
-      params,
-      file: filePath,
-      line: lineIndex + 1,
-    }];
+    return [
+      {
+        method: 'GET' as HttpMethod,
+        path: normalizedPath,
+        handler: handlerName,
+        params,
+        file: filePath,
+        line: lineIndex + 1,
+      },
+    ];
   }
 
   private extractParams(route: string): EndpointParam[] {
@@ -126,7 +142,7 @@ export class DjangoAdapter implements Adapter {
     while ((match = typedPattern.exec(route)) !== null) {
       params.push({
         name: match[2],
-        location: "path",
+        location: 'path',
         type: this.mapDjangoType(match[1]),
         required: true,
       });
@@ -139,8 +155,8 @@ export class DjangoAdapter implements Adapter {
       if (!params.some((p) => p.name === match![1])) {
         params.push({
           name: match[1],
-          location: "path",
-          type: "string",
+          location: 'path',
+          type: 'string',
           required: true,
         });
       }
@@ -152,8 +168,8 @@ export class DjangoAdapter implements Adapter {
       if (!params.some((p) => p.name === match![1])) {
         params.push({
           name: match[1],
-          location: "path",
-          type: "string",
+          location: 'path',
+          type: 'string',
           required: true,
         });
       }
@@ -177,14 +193,22 @@ export class DjangoAdapter implements Adapter {
    * def my_view(request): ...
    */
   private detectViewMethods(source: string): Map<string, HttpMethod[]> {
-    const HTTP_METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"];
+    const HTTP_METHODS = [
+      'GET',
+      'POST',
+      'PUT',
+      'DELETE',
+      'PATCH',
+      'HEAD',
+      'OPTIONS',
+    ];
     const views = new Map<string, HttpMethod[]>();
-    const lines = source.split("\n");
+    const lines = source.split('\n');
 
     for (let i = 0; i < lines.length; i++) {
       // Detect class-based views (APIView, View, MethodView, ViewSet, etc.)
       const classMatch = lines[i].match(
-        /^class\s+(\w+)\s*\(([^)]*(?:View|ViewSet|Mixin)[^)]*)\)/,
+        /^class\s+(\w+)\s*\(([^)]*(?:View|ViewSet|Mixin)[^)]*)\)/
       );
       if (classMatch) {
         const className = classMatch[1];
@@ -192,9 +216,9 @@ export class DjangoAdapter implements Adapter {
         const methods: HttpMethod[] = [];
 
         for (let j = i + 1; j < lines.length; j++) {
-          if (lines[j].match(/^\S/) && lines[j].trim() !== "") break;
+          if (lines[j].match(/^\S/) && lines[j].trim() !== '') break;
           const defMatch = lines[j].match(
-            /^\s+(?:async\s+)?def\s+(get|post|put|delete|patch|head|options|list|create|retrieve|update|partial_update|destroy)\s*\(\s*self/i,
+            /^\s+(?:async\s+)?def\s+(get|post|put|delete|patch|head|options|list|create|retrieve|update|partial_update|destroy)\s*\(\s*self/i
           );
           if (defMatch) {
             const methodName = defMatch[1].toLowerCase();
@@ -219,13 +243,13 @@ export class DjangoAdapter implements Adapter {
 
       // Detect @api_view(['GET', 'POST']) or @require_http_methods(["GET", "POST"])
       const decoratorMatch = lines[i].match(
-        /^\s*@(?:api_view|require_http_methods)\s*\(\s*\[([^\]]+)\]/,
+        /^\s*@(?:api_view|require_http_methods)\s*\(\s*\[([^\]]+)\]/
       );
       if (decoratorMatch) {
         const methodsStr = decoratorMatch[1];
         const methods = methodsStr
-          .split(",")
-          .map((m) => m.trim().replace(/['"]/g, "").toUpperCase())
+          .split(',')
+          .map((m) => m.trim().replace(/['"]/g, '').toUpperCase())
           .filter((m): m is HttpMethod => HTTP_METHODS.includes(m));
 
         // Find the function name on the next def line
@@ -244,19 +268,19 @@ export class DjangoAdapter implements Adapter {
 
   private mapViewSetMethodToHttp(methodName: string): HttpMethod | null {
     const map: Record<string, HttpMethod> = {
-      get: "GET",
-      post: "POST",
-      put: "PUT",
-      delete: "DELETE",
-      patch: "PATCH",
-      head: "HEAD",
-      options: "OPTIONS",
-      list: "GET",
-      create: "POST",
-      retrieve: "GET",
-      update: "PUT",
-      partial_update: "PATCH",
-      destroy: "DELETE",
+      get: 'GET',
+      post: 'POST',
+      put: 'PUT',
+      delete: 'DELETE',
+      patch: 'PATCH',
+      head: 'HEAD',
+      options: 'OPTIONS',
+      list: 'GET',
+      create: 'POST',
+      retrieve: 'GET',
+      update: 'PUT',
+      partial_update: 'PATCH',
+      destroy: 'DELETE',
     };
     return map[methodName] ?? null;
   }
@@ -265,46 +289,60 @@ export class DjangoAdapter implements Adapter {
     const basesLower = bases.toLowerCase();
 
     // ReadOnlyModelViewSet must be checked before ModelViewSet
-    if (basesLower.includes("readonlymodelviewset")) {
-      return ["GET"];
+    if (basesLower.includes('readonlymodelviewset')) {
+      return ['GET'];
     }
     // ModelViewSet = full CRUD
-    if (basesLower.includes("modelviewset")) {
-      return ["GET", "POST", "PUT", "PATCH", "DELETE"];
+    if (basesLower.includes('modelviewset')) {
+      return ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
     }
 
     const methods: HttpMethod[] = [];
     // DRF mixin class names: CreateModelMixin, ListModelMixin, etc.
-    if (basesLower.includes("createmodelmixin") || basesLower.includes("createapiview")) {
-      methods.push("POST");
+    if (
+      basesLower.includes('createmodelmixin') ||
+      basesLower.includes('createapiview')
+    ) {
+      methods.push('POST');
     }
-    if (basesLower.includes("listmodelmixin") || basesLower.includes("retrievemodelmixin") || basesLower.includes("listapiview") || basesLower.includes("retrieveapiview")) {
-      if (!methods.includes("GET")) methods.push("GET");
+    if (
+      basesLower.includes('listmodelmixin') ||
+      basesLower.includes('retrievemodelmixin') ||
+      basesLower.includes('listapiview') ||
+      basesLower.includes('retrieveapiview')
+    ) {
+      if (!methods.includes('GET')) methods.push('GET');
     }
-    if (basesLower.includes("updatemodelmixin") || basesLower.includes("updateapiview")) {
-      methods.push("PUT");
-      methods.push("PATCH");
+    if (
+      basesLower.includes('updatemodelmixin') ||
+      basesLower.includes('updateapiview')
+    ) {
+      methods.push('PUT');
+      methods.push('PATCH');
     }
-    if (basesLower.includes("destroymodelmixin") || basesLower.includes("destroyapiview")) {
-      methods.push("DELETE");
+    if (
+      basesLower.includes('destroymodelmixin') ||
+      basesLower.includes('destroyapiview')
+    ) {
+      methods.push('DELETE');
     }
     return methods;
   }
 
   private mapDjangoType(djangoType: string): string {
     switch (djangoType) {
-      case "int":
-        return "number";
-      case "str":
-        return "string";
-      case "slug":
-        return "string";
-      case "uuid":
-        return "string";
-      case "path":
-        return "string";
+      case 'int':
+        return 'number';
+      case 'str':
+        return 'string';
+      case 'slug':
+        return 'string';
+      case 'uuid':
+        return 'string';
+      case 'path':
+        return 'string';
       default:
-        return "string";
+        return 'string';
     }
   }
 }

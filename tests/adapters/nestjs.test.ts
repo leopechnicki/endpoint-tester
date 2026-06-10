@@ -1,10 +1,10 @@
-import { describe, it, expect } from "vitest";
-import { NestJSAdapter } from "../../src/adapters/nestjs.js";
+import { describe, it, expect } from 'vitest';
+import { NestJSAdapter } from '../../src/adapters/nestjs.js';
 
-describe("NestJSAdapter", () => {
+describe('NestJSAdapter', () => {
   const adapter = new NestJSAdapter();
 
-  it("should detect @Get() decorator", () => {
+  it('should detect @Get() decorator', () => {
     const source = `
       @Controller('users')
       class UsersController {
@@ -14,13 +14,13 @@ describe("NestJSAdapter", () => {
         }
       }
     `;
-    const endpoints = adapter.parse(source, "test.ts");
+    const endpoints = adapter.parse(source, 'test.ts');
     expect(endpoints).toHaveLength(1);
-    expect(endpoints[0].method).toBe("GET");
-    expect(endpoints[0].path).toBe("/users");
+    expect(endpoints[0].method).toBe('GET');
+    expect(endpoints[0].path).toBe('/users');
   });
 
-  it("should detect @Post() with sub-path", () => {
+  it('should detect @Post() with sub-path', () => {
     const source = `
       @Controller('users')
       class UsersController {
@@ -30,13 +30,13 @@ describe("NestJSAdapter", () => {
         }
       }
     `;
-    const endpoints = adapter.parse(source, "test.ts");
+    const endpoints = adapter.parse(source, 'test.ts');
     expect(endpoints).toHaveLength(1);
-    expect(endpoints[0].method).toBe("POST");
-    expect(endpoints[0].path).toBe("/users/create");
+    expect(endpoints[0].method).toBe('POST');
+    expect(endpoints[0].path).toBe('/users/create');
   });
 
-  it("should detect all HTTP method decorators", () => {
+  it('should detect all HTTP method decorators', () => {
     const source = `
       @Controller('items')
       class ItemsController {
@@ -56,12 +56,18 @@ describe("NestJSAdapter", () => {
         patch() {}
       }
     `;
-    const endpoints = adapter.parse(source, "test.ts");
+    const endpoints = adapter.parse(source, 'test.ts');
     expect(endpoints).toHaveLength(5);
-    expect(endpoints.map(e => e.method).sort()).toEqual(["DELETE", "GET", "PATCH", "POST", "PUT"]);
+    expect(endpoints.map((e) => e.method).sort()).toEqual([
+      'DELETE',
+      'GET',
+      'PATCH',
+      'POST',
+      'PUT',
+    ]);
   });
 
-  it("should extract path parameters", () => {
+  it('should extract path parameters', () => {
     const source = `
       @Controller('users')
       class UsersController {
@@ -71,14 +77,14 @@ describe("NestJSAdapter", () => {
         }
       }
     `;
-    const endpoints = adapter.parse(source, "test.ts");
-    expect(endpoints[0].path).toBe("/users/:id");
-    const pathParams = endpoints[0].params.filter(p => p.location === "path");
+    const endpoints = adapter.parse(source, 'test.ts');
+    expect(endpoints[0].path).toBe('/users/:id');
+    const pathParams = endpoints[0].params.filter((p) => p.location === 'path');
     expect(pathParams).toHaveLength(1);
-    expect(pathParams[0].name).toBe("id");
+    expect(pathParams[0].name).toBe('id');
   });
 
-  it("should detect @Query() parameters", () => {
+  it('should detect @Query() parameters', () => {
     const source = `
       @Controller('users')
       class UsersController {
@@ -88,14 +94,16 @@ describe("NestJSAdapter", () => {
         }
       }
     `;
-    const endpoints = adapter.parse(source, "test.ts");
-    const queryParams = endpoints[0].params.filter(p => p.location === "query");
+    const endpoints = adapter.parse(source, 'test.ts');
+    const queryParams = endpoints[0].params.filter(
+      (p) => p.location === 'query'
+    );
     expect(queryParams).toHaveLength(2);
-    expect(queryParams.map(p => p.name)).toContain("page");
-    expect(queryParams.map(p => p.name)).toContain("limit");
+    expect(queryParams.map((p) => p.name)).toContain('page');
+    expect(queryParams.map((p) => p.name)).toContain('limit');
   });
 
-  it("should detect @Body() with DTO class", () => {
+  it('should detect @Body() with DTO class', () => {
     const source = `
       class CreateUserDto {
         name: string;
@@ -111,15 +119,15 @@ describe("NestJSAdapter", () => {
         }
       }
     `;
-    const endpoints = adapter.parse(source, "test.ts");
+    const endpoints = adapter.parse(source, 'test.ts');
     expect(endpoints[0].body).toBeDefined();
-    expect(endpoints[0].body!.fields).toHaveProperty("name");
-    expect(endpoints[0].body!.fields).toHaveProperty("email");
-    expect(endpoints[0].body!.fields).toHaveProperty("age");
-    expect(endpoints[0].body!.fields!.age).toBe("number");
+    expect(endpoints[0].body!.fields).toHaveProperty('name');
+    expect(endpoints[0].body!.fields).toHaveProperty('email');
+    expect(endpoints[0].body!.fields).toHaveProperty('age');
+    expect(endpoints[0].body!.fields!.age).toBe('number');
   });
 
-  it("should handle controller without prefix", () => {
+  it('should handle controller without prefix', () => {
     const source = `
       @Controller()
       class AppController {
@@ -130,13 +138,13 @@ describe("NestJSAdapter", () => {
       }
     `;
     // Controller() with no args has empty string prefix
-    const endpoints = adapter.parse(source, "test.ts");
+    const endpoints = adapter.parse(source, 'test.ts');
     // No @Controller with string arg, so no prefix detected
     expect(endpoints).toHaveLength(1);
-    expect(endpoints[0].path).toBe("/health");
+    expect(endpoints[0].path).toBe('/health');
   });
 
-  it("should detect handler name", () => {
+  it('should detect handler name', () => {
     const source = `
       @Controller('users')
       class UsersController {
@@ -146,11 +154,11 @@ describe("NestJSAdapter", () => {
         }
       }
     `;
-    const endpoints = adapter.parse(source, "test.ts");
-    expect(endpoints[0].handler).toBe("findAll");
+    const endpoints = adapter.parse(source, 'test.ts');
+    expect(endpoints[0].handler).toBe('findAll');
   });
 
-  it("should infer response fields from return statement", () => {
+  it('should infer response fields from return statement', () => {
     const source = `
       @Controller('users')
       class UsersController {
@@ -160,10 +168,10 @@ describe("NestJSAdapter", () => {
         }
       }
     `;
-    const endpoints = adapter.parse(source, "test.ts");
+    const endpoints = adapter.parse(source, 'test.ts');
     expect(endpoints[0].response).toBeDefined();
-    expect(endpoints[0].response!.fields).toHaveProperty("id");
-    expect(endpoints[0].response!.fields).toHaveProperty("name");
-    expect(endpoints[0].response!.fields).toHaveProperty("email");
+    expect(endpoints[0].response!.fields).toHaveProperty('id');
+    expect(endpoints[0].response!.fields).toHaveProperty('name');
+    expect(endpoints[0].response!.fields).toHaveProperty('email');
   });
 });

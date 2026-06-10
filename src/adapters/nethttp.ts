@@ -1,5 +1,5 @@
-import type { Adapter, Endpoint, HttpMethod } from "../types.js";
-import { Framework } from "../types.js";
+import type { Adapter, Endpoint, HttpMethod } from '../types.js';
+import { Framework } from '../types.js';
 
 /**
  * Parses standard library net/http route definitions from Go source code.
@@ -10,11 +10,11 @@ import { Framework } from "../types.js";
  */
 export class NetHttpAdapter implements Adapter {
   readonly framework = Framework.NetHttp;
-  readonly fileExtensions = [".go"];
+  readonly fileExtensions = ['.go'];
 
   parse(source: string, filePath?: string): Endpoint[] {
     const endpoints: Endpoint[] = [];
-    const lines = source.split("\n");
+    const lines = source.split('\n');
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -30,7 +30,7 @@ export class NetHttpAdapter implements Adapter {
   private parseLine(
     line: string,
     lineNumber: number,
-    filePath?: string,
+    filePath?: string
   ): Endpoint | null {
     // Match: identifier.HandleFunc("/path", handler) or http.HandleFunc("/path", handler)
     const pattern = /(\w+)\.HandleFunc\s*\(\s*"([^"]+)"\s*,\s*(\w+)/;
@@ -41,14 +41,14 @@ export class NetHttpAdapter implements Adapter {
 
     // Normalize: ensure leading slash
     let fullPath = path;
-    if (!fullPath.startsWith("/")) {
-      fullPath = "/" + fullPath;
+    if (!fullPath.startsWith('/')) {
+      fullPath = '/' + fullPath;
     }
 
     // net/http HandleFunc registers for all methods — we emit GET as the canonical method
     // since net/http doesn't specify a method in the registration; handler logic decides
     return {
-      method: "GET" as HttpMethod,
+      method: 'GET' as HttpMethod,
       path: fullPath,
       handler,
       params: [],

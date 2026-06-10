@@ -1,27 +1,35 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { execFileSync } from "node:child_process";
-import { mkdirSync, writeFileSync, rmSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 
-const CLI_PATH = resolve(__dirname, "../dist/cli.js");
-const TEST_DIR = join(process.cwd(), ".test-cli-tmp");
+const CLI_PATH = resolve(__dirname, '../dist/cli.js');
+const TEST_DIR = join(process.cwd(), '.test-cli-tmp');
 
-function runCli(args: string[]): { stdout: string; stderr: string; exitCode: number } {
+function runCli(args: string[]): {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+} {
   try {
     // execFileSync returns stdout; we capture stderr separately so assertions
     // on console.error output (which goes to stderr) work correctly.
-    const stdout = execFileSync("node", [CLI_PATH, ...args], {
-      encoding: "utf-8",
+    const stdout = execFileSync('node', [CLI_PATH, ...args], {
+      encoding: 'utf-8',
       cwd: process.cwd(),
       timeout: 15000,
-      stdio: ["pipe", "pipe", "pipe"],
+      stdio: ['pipe', 'pipe', 'pipe'],
     });
-    return { stdout, stderr: "", exitCode: 0 };
+    return { stdout, stderr: '', exitCode: 0 };
   } catch (err: unknown) {
-    const execErr = err as { stdout?: string; stderr?: string; status?: number };
+    const execErr = err as {
+      stdout?: string;
+      stderr?: string;
+      status?: number;
+    };
     return {
-      stdout: execErr.stdout ?? "",
-      stderr: execErr.stderr ?? "",
+      stdout: execErr.stdout ?? '',
+      stderr: execErr.stderr ?? '',
       exitCode: execErr.status ?? 1,
     };
   }
@@ -31,12 +39,12 @@ function setupProject(files: Record<string, string>) {
   mkdirSync(TEST_DIR, { recursive: true });
   for (const [name, content] of Object.entries(files)) {
     const filePath = join(TEST_DIR, name);
-    mkdirSync(join(filePath, ".."), { recursive: true });
+    mkdirSync(join(filePath, '..'), { recursive: true });
     writeFileSync(filePath, content);
   }
 }
 
-describe("CLI integration", () => {
+describe('CLI integration', () => {
   afterEach(() => {
     try {
       rmSync(TEST_DIR, { recursive: true, force: true });
@@ -45,39 +53,41 @@ describe("CLI integration", () => {
     }
   });
 
-  it("should show version with --version", () => {
-    const { stdout, exitCode } = runCli(["--version"]);
+  it('should show version with --version', () => {
+    const { stdout, exitCode } = runCli(['--version']);
     expect(exitCode).toBe(0);
     expect(stdout.trim()).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
-  it("should show help with --help", () => {
-    const { stdout, exitCode } = runCli(["--help"]);
+  it('should show help with --help', () => {
+    const { stdout, exitCode } = runCli(['--help']);
     expect(exitCode).toBe(0);
-    expect(stdout).toContain("endpoint-tester");
-    expect(stdout).toContain("scan");
-    expect(stdout).toContain("generate");
+    expect(stdout).toContain('endpoint-tester');
+    expect(stdout).toContain('scan');
+    expect(stdout).toContain('generate');
   });
 
-  it("should show scan help with scan --help", () => {
-    const { stdout, exitCode } = runCli(["scan", "--help"]);
+  it('should show scan help with scan --help', () => {
+    const { stdout, exitCode } = runCli(['scan', '--help']);
     expect(exitCode).toBe(0);
-    expect(stdout).toContain("directory");
-    expect(stdout).toContain("--framework");
+    expect(stdout).toContain('directory');
+    expect(stdout).toContain('--framework');
   });
 
-  it("should show generate help with generate --help", () => {
-    const { stdout, exitCode } = runCli(["generate", "--help"]);
+  it('should show generate help with generate --help', () => {
+    const { stdout, exitCode } = runCli(['generate', '--help']);
     expect(exitCode).toBe(0);
-    expect(stdout).toContain("--format");
-    expect(stdout).toContain("--base-url");
+    expect(stdout).toContain('--format');
+    expect(stdout).toContain('--base-url');
   });
 
-  describe("scan command", () => {
-    it("should scan an Express project and find endpoints", () => {
+  describe('scan command', () => {
+    it('should scan an Express project and find endpoints', () => {
       setupProject({
-        "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
-        "src/app.ts": `
+        'package.json': JSON.stringify({
+          dependencies: { express: '^4.18.0' },
+        }),
+        'src/app.ts': `
 import express from "express";
 const app = express();
 app.get('/users', getUsers);
@@ -85,17 +95,17 @@ app.post('/users', createUser);
 `,
       });
 
-      const { stdout, exitCode } = runCli(["scan", TEST_DIR]);
+      const { stdout, exitCode } = runCli(['scan', TEST_DIR]);
       expect(exitCode).toBe(0);
-      expect(stdout).toContain("Auto-detected framework: express");
-      expect(stdout).toContain("Found 2 endpoint(s)");
-      expect(stdout).toContain("GET");
-      expect(stdout).toContain("/users");
+      expect(stdout).toContain('Auto-detected framework: express');
+      expect(stdout).toContain('Found 2 endpoint(s)');
+      expect(stdout).toContain('GET');
+      expect(stdout).toContain('/users');
     });
 
-    it("should scan with explicit --framework flag", () => {
+    it('should scan with explicit --framework flag', () => {
       setupProject({
-        "app.py": `
+        'app.py': `
 from flask import Flask
 app = Flask(__name__)
 
@@ -105,57 +115,70 @@ def health():
 `,
       });
 
-      const { stdout, exitCode } = runCli(["scan", TEST_DIR, "--framework", "flask"]);
+      const { stdout, exitCode } = runCli([
+        'scan',
+        TEST_DIR,
+        '--framework',
+        'flask',
+      ]);
       expect(exitCode).toBe(0);
-      expect(stdout).toContain("Found 1 endpoint(s)");
-      expect(stdout).toContain("/health");
+      expect(stdout).toContain('Found 1 endpoint(s)');
+      expect(stdout).toContain('/health');
     });
 
-    it("should write JSON output with --output", () => {
+    it('should write JSON output with --output', () => {
       setupProject({
-        "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
-        "routes.ts": `app.get('/test', handler);`,
+        'package.json': JSON.stringify({
+          dependencies: { express: '^4.18.0' },
+        }),
+        'routes.ts': `app.get('/test', handler);`,
       });
 
-      const outputFile = join(TEST_DIR, "output.json");
-      const { exitCode } = runCli(["scan", TEST_DIR, "--output", outputFile]);
+      const outputFile = join(TEST_DIR, 'output.json');
+      const { exitCode } = runCli(['scan', TEST_DIR, '--output', outputFile]);
       expect(exitCode).toBe(0);
 
-      const output = JSON.parse(readFileSync(outputFile, "utf-8"));
+      const output = JSON.parse(readFileSync(outputFile, 'utf-8'));
       expect(Array.isArray(output)).toBe(true);
       expect(output.length).toBeGreaterThan(0);
-      expect(output[0].path).toBe("/test");
+      expect(output[0].path).toBe('/test');
     });
 
-    it("should create parent directory for a nested --output path", () => {
+    it('should create parent directory for a nested --output path', () => {
       setupProject({
-        "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
-        "routes.ts": `app.get('/test', handler);`,
+        'package.json': JSON.stringify({
+          dependencies: { express: '^4.18.0' },
+        }),
+        'routes.ts': `app.get('/test', handler);`,
       });
 
-      const outputFile = join(TEST_DIR, "reports", "nested", "scan.json");
-      const { exitCode } = runCli(["scan", TEST_DIR, "--output", outputFile]);
+      const outputFile = join(TEST_DIR, 'reports', 'nested', 'scan.json');
+      const { exitCode } = runCli(['scan', TEST_DIR, '--output', outputFile]);
       expect(exitCode).toBe(0);
 
-      const output = JSON.parse(readFileSync(outputFile, "utf-8"));
+      const output = JSON.parse(readFileSync(outputFile, 'utf-8'));
       expect(Array.isArray(output)).toBe(true);
     });
 
-    it("should report 0 endpoints for empty project", () => {
+    it('should report 0 endpoints for empty project', () => {
       setupProject({
-        "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
-        "src/empty.ts": "// no routes here\n",
+        'package.json': JSON.stringify({
+          dependencies: { express: '^4.18.0' },
+        }),
+        'src/empty.ts': '// no routes here\n',
       });
 
-      const { stdout, exitCode } = runCli(["scan", TEST_DIR]);
+      const { stdout, exitCode } = runCli(['scan', TEST_DIR]);
       expect(exitCode).toBe(0);
-      expect(stdout).toContain("Found 0 endpoint(s)");
+      expect(stdout).toContain('Found 0 endpoint(s)');
     });
 
-    it("should show source file path in --verbose mode", () => {
+    it('should show source file path in --verbose mode', () => {
       setupProject({
-        "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
-        "src/app.ts": `
+        'package.json': JSON.stringify({
+          dependencies: { express: '^4.18.0' },
+        }),
+        'src/app.ts': `
 import express from "express";
 const app = express();
 app.get('/users', getUsers);
@@ -163,170 +186,218 @@ app.post('/users', createUser);
 `,
       });
 
-      const { stdout, exitCode } = runCli(["scan", TEST_DIR, "--verbose"]);
+      const { stdout, exitCode } = runCli(['scan', TEST_DIR, '--verbose']);
       expect(exitCode).toBe(0);
-      expect(stdout).toContain("/users");
-      expect(stdout).toContain("app.ts");
+      expect(stdout).toContain('/users');
+      expect(stdout).toContain('app.ts');
     });
 
-    it("should not show file paths in default (non-verbose) mode", () => {
+    it('should not show file paths in default (non-verbose) mode', () => {
       setupProject({
-        "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
-        "src/app.ts": `
+        'package.json': JSON.stringify({
+          dependencies: { express: '^4.18.0' },
+        }),
+        'src/app.ts': `
 import express from "express";
 const app = express();
 app.get('/users', getUsers);
 `,
       });
 
-      const { stdout, exitCode } = runCli(["scan", TEST_DIR]);
+      const { stdout, exitCode } = runCli(['scan', TEST_DIR]);
       expect(exitCode).toBe(0);
-      expect(stdout).toContain("/users");
-      expect(stdout).not.toContain("app.ts");
+      expect(stdout).toContain('/users');
+      expect(stdout).not.toContain('app.ts');
     });
 
-    it("--verbose flag should be shown in scan --help", () => {
-      const { stdout, exitCode } = runCli(["scan", "--help"]);
+    it('--verbose flag should be shown in scan --help', () => {
+      const { stdout, exitCode } = runCli(['scan', '--help']);
       expect(exitCode).toBe(0);
-      expect(stdout).toContain("--verbose");
+      expect(stdout).toContain('--verbose');
     });
   });
 
-  describe("generate command", () => {
-    it("should generate test files from endpoints", () => {
+  describe('generate command', () => {
+    it('should generate test files from endpoints', () => {
       setupProject({
-        "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
-        "app.ts": `
+        'package.json': JSON.stringify({
+          dependencies: { express: '^4.18.0' },
+        }),
+        'app.ts': `
 app.get('/users', getUsers);
 app.post('/users', createUser);
 `,
       });
 
-      const outputDir = join(TEST_DIR, "generated");
-      const { stdout, exitCode } = runCli(["generate", TEST_DIR, "--output", outputDir]);
+      const outputDir = join(TEST_DIR, 'generated');
+      const { stdout, exitCode } = runCli([
+        'generate',
+        TEST_DIR,
+        '--output',
+        outputDir,
+      ]);
       expect(exitCode).toBe(0);
-      expect(stdout).toContain("Found 2 endpoint(s)");
-      expect(stdout).toContain("Tests written to");
+      expect(stdout).toContain('Found 2 endpoint(s)');
+      expect(stdout).toContain('Tests written to');
     });
 
-    it("should report no endpoints and skip generation for empty project", () => {
+    it('should report no endpoints and skip generation for empty project', () => {
       setupProject({
-        "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
-        "empty.ts": "// nothing\n",
+        'package.json': JSON.stringify({
+          dependencies: { express: '^4.18.0' },
+        }),
+        'empty.ts': '// nothing\n',
       });
 
-      const { stdout, exitCode } = runCli(["generate", TEST_DIR]);
+      const { stdout, exitCode } = runCli(['generate', TEST_DIR]);
       expect(exitCode).toBe(0);
-      expect(stdout).toContain("No endpoints found");
+      expect(stdout).toContain('No endpoints found');
     });
 
-    it("should reject an unsupported --format value", () => {
+    it('should reject an unsupported --format value', () => {
       setupProject({
-        "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
-        "app.ts": `app.get('/users', getUsers);`,
+        'package.json': JSON.stringify({
+          dependencies: { express: '^4.18.0' },
+        }),
+        'app.ts': `app.get('/users', getUsers);`,
       });
 
       // console.error() writes to stderr — verify the helper captures it correctly
-      const { stdout, stderr, exitCode } = runCli(["generate", TEST_DIR, "--format", "mocha"]);
+      const { stdout, stderr, exitCode } = runCli([
+        'generate',
+        TEST_DIR,
+        '--format',
+        'mocha',
+      ]);
       expect(exitCode).toBe(1);
       // The error message goes to stderr (console.error); verify it is captured there
-      expect(stderr).toContain("Invalid --format");
-      expect(stderr).toContain("mocha");
+      expect(stderr).toContain('Invalid --format');
+      expect(stderr).toContain('mocha');
       // stdout should be empty (no successful output before the early exit)
-      expect(stdout.trim()).toBe("");
+      expect(stdout.trim()).toBe('');
     });
 
-    it("should reject an invalid --framework value in generate", () => {
+    it('should reject an invalid --framework value in generate', () => {
       setupProject({
-        "app.ts": `app.get('/users', getUsers);`,
+        'app.ts': `app.get('/users', getUsers);`,
       });
 
-      const { stderr, exitCode } = runCli(["generate", TEST_DIR, "--framework", "rails"]);
+      const { stderr, exitCode } = runCli([
+        'generate',
+        TEST_DIR,
+        '--framework',
+        'rails',
+      ]);
       expect(exitCode).toBe(1);
-      expect(stderr).toContain("Invalid --framework");
-      expect(stderr).toContain("rails");
+      expect(stderr).toContain('Invalid --framework');
+      expect(stderr).toContain('rails');
     });
   });
 
-  describe("scan command framework validation", () => {
-    it("should reject an invalid --framework value in scan", () => {
+  describe('scan command framework validation', () => {
+    it('should reject an invalid --framework value in scan', () => {
       setupProject({
-        "app.ts": `app.get('/users', getUsers);`,
+        'app.ts': `app.get('/users', getUsers);`,
       });
 
-      const { stderr, exitCode } = runCli(["scan", TEST_DIR, "--framework", "rails"]);
+      const { stderr, exitCode } = runCli([
+        'scan',
+        TEST_DIR,
+        '--framework',
+        'rails',
+      ]);
       expect(exitCode).toBe(1);
-      expect(stderr).toContain("Invalid --framework");
-      expect(stderr).toContain("rails");
+      expect(stderr).toContain('Invalid --framework');
+      expect(stderr).toContain('rails');
     });
   });
 
-  describe("--exclude option", () => {
-    it("scan --exclude skips matching directories", () => {
+  describe('--exclude option', () => {
+    it('scan --exclude skips matching directories', () => {
       setupProject({
-        "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
-        "src/app.ts": `app.get('/users', getUsers);`,
-        "legacy/old.ts": `app.get('/legacy', oldHandler);`,
+        'package.json': JSON.stringify({
+          dependencies: { express: '^4.18.0' },
+        }),
+        'src/app.ts': `app.get('/users', getUsers);`,
+        'legacy/old.ts': `app.get('/legacy', oldHandler);`,
       });
 
       const { stdout, exitCode } = runCli([
-        "scan", TEST_DIR,
-        "--framework", "express",
-        "--exclude", "legacy/**",
+        'scan',
+        TEST_DIR,
+        '--framework',
+        'express',
+        '--exclude',
+        'legacy/**',
       ]);
       expect(exitCode).toBe(0);
-      expect(stdout).toContain("/users");
-      expect(stdout).not.toContain("/legacy");
+      expect(stdout).toContain('/users');
+      expect(stdout).not.toContain('/legacy');
     });
 
-    it("scan --exclude accepts multiple patterns", () => {
+    it('scan --exclude accepts multiple patterns', () => {
       setupProject({
-        "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
-        "src/app.ts": `app.get('/api', apiHandler);`,
-        "test/routes.ts": `app.get('/test-route', testHandler);`,
-        "scripts/gen.ts": `app.get('/gen', genHandler);`,
+        'package.json': JSON.stringify({
+          dependencies: { express: '^4.18.0' },
+        }),
+        'src/app.ts': `app.get('/api', apiHandler);`,
+        'test/routes.ts': `app.get('/test-route', testHandler);`,
+        'scripts/gen.ts': `app.get('/gen', genHandler);`,
       });
 
       const { stdout, exitCode } = runCli([
-        "scan", TEST_DIR,
-        "--framework", "express",
-        "--exclude", "test/**",
-        "--exclude", "scripts/**",
+        'scan',
+        TEST_DIR,
+        '--framework',
+        'express',
+        '--exclude',
+        'test/**',
+        '--exclude',
+        'scripts/**',
       ]);
       expect(exitCode).toBe(0);
-      expect(stdout).toContain("/api");
-      expect(stdout).not.toContain("/test-route");
-      expect(stdout).not.toContain("/gen");
+      expect(stdout).toContain('/api');
+      expect(stdout).not.toContain('/test-route');
+      expect(stdout).not.toContain('/gen');
     });
 
-    it("generate --exclude skips matching directories", () => {
+    it('generate --exclude skips matching directories', () => {
       setupProject({
-        "package.json": JSON.stringify({ dependencies: { express: "^4.18.0" } }),
-        "src/app.ts": `app.get('/users', getUsers);`,
-        "legacy/old.ts": `app.get('/legacy', oldHandler);`,
+        'package.json': JSON.stringify({
+          dependencies: { express: '^4.18.0' },
+        }),
+        'src/app.ts': `app.get('/users', getUsers);`,
+        'legacy/old.ts': `app.get('/legacy', oldHandler);`,
       });
 
-      const outputDir = join(TEST_DIR, "generated");
+      const outputDir = join(TEST_DIR, 'generated');
       const { stdout, exitCode } = runCli([
-        "generate", TEST_DIR,
-        "--framework", "express",
-        "--output", outputDir,
-        "--exclude", "legacy/**",
+        'generate',
+        TEST_DIR,
+        '--framework',
+        'express',
+        '--output',
+        outputDir,
+        '--exclude',
+        'legacy/**',
       ]);
       expect(exitCode).toBe(0);
-      const content = readFileSync(join(outputDir, "endpoints.test.ts"), "utf-8");
-      expect(content).toContain("/users");
-      expect(content).not.toContain("/legacy");
+      const content = readFileSync(
+        join(outputDir, 'endpoints.test.ts'),
+        'utf-8'
+      );
+      expect(content).toContain('/users');
+      expect(content).not.toContain('/legacy');
     });
 
-    it("scan --help mentions --exclude", () => {
-      const { stdout } = runCli(["scan", "--help"]);
-      expect(stdout).toContain("--exclude");
+    it('scan --help mentions --exclude', () => {
+      const { stdout } = runCli(['scan', '--help']);
+      expect(stdout).toContain('--exclude');
     });
 
-    it("generate --help mentions --exclude", () => {
-      const { stdout } = runCli(["generate", "--help"]);
-      expect(stdout).toContain("--exclude");
+    it('generate --help mentions --exclude', () => {
+      const { stdout } = runCli(['generate', '--help']);
+      expect(stdout).toContain('--exclude');
     });
   });
 });

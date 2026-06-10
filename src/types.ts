@@ -1,24 +1,31 @@
 export enum Framework {
-  Express = "express",
-  FastAPI = "fastapi",
-  Spring = "spring",
-  Django = "django",
-  Flask = "flask",
-  Fastify = "fastify",
-  Koa = "koa",
-  NestJS = "nestjs",
-  Hono = "hono",
-  Gin = "gin",
-  Echo = "echo",
-  Chi = "chi",
-  NetHttp = "nethttp",
+  Express = 'express',
+  FastAPI = 'fastapi',
+  Spring = 'spring',
+  Django = 'django',
+  Flask = 'flask',
+  Fastify = 'fastify',
+  Koa = 'koa',
+  NestJS = 'nestjs',
+  Hono = 'hono',
+  Gin = 'gin',
+  Echo = 'echo',
+  Chi = 'chi',
+  NetHttp = 'nethttp',
 }
 
-export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS";
+export type HttpMethod =
+  | 'GET'
+  | 'POST'
+  | 'PUT'
+  | 'DELETE'
+  | 'PATCH'
+  | 'HEAD'
+  | 'OPTIONS';
 
 export interface EndpointParam {
   name: string;
-  location: "path" | "query" | "header";
+  location: 'path' | 'query' | 'header';
   type?: string;
   required?: boolean;
 }
@@ -64,7 +71,13 @@ export interface ScanOptions {
 }
 
 /** The set of output formats this tool supports (test formats + OpenAPI spec). */
-export const SUPPORTED_FORMATS = ["vitest", "jest", "pytest", "go", "openapi"] as const;
+export const SUPPORTED_FORMATS = [
+  'vitest',
+  'jest',
+  'pytest',
+  'go',
+  'openapi',
+] as const;
 export type SupportedFormat = (typeof SUPPORTED_FORMATS)[number];
 
 export interface GenerateOptions {

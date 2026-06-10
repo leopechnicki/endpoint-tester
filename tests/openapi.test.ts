@@ -1,119 +1,127 @@
-import { describe, it, expect } from "vitest";
-import yaml from "js-yaml";
-import { OpenApiGenerator, toYaml } from "../src/openapi.js";
-import { TestGenerator } from "../src/generator.js";
-import type { Endpoint } from "../src/types.js";
+import { describe, it, expect } from 'vitest';
+import yaml from 'js-yaml';
+import { OpenApiGenerator, toYaml } from '../src/openapi.js';
+import { TestGenerator } from '../src/generator.js';
+import type { Endpoint } from '../src/types.js';
 
 const sampleEndpoints: Endpoint[] = [
-  { method: "GET", path: "/users", handler: "listUsers", params: [] },
+  { method: 'GET', path: '/users', handler: 'listUsers', params: [] },
   {
-    method: "GET",
-    path: "/users/:id",
-    handler: "getUser",
-    params: [{ name: "id", location: "path", type: "string", required: true }],
+    method: 'GET',
+    path: '/users/:id',
+    handler: 'getUser',
+    params: [{ name: 'id', location: 'path', type: 'string', required: true }],
   },
   {
-    method: "POST",
-    path: "/users",
-    handler: "createUser",
+    method: 'POST',
+    path: '/users',
+    handler: 'createUser',
     params: [],
-    body: { fields: { name: "string", age: "integer", active: "boolean" } },
+    body: { fields: { name: 'string', age: 'integer', active: 'boolean' } },
   },
   {
-    method: "DELETE",
-    path: "/users/:id",
-    handler: "deleteUser",
-    params: [{ name: "id", location: "path", type: "string", required: true }],
+    method: 'DELETE',
+    path: '/users/:id',
+    handler: 'deleteUser',
+    params: [{ name: 'id', location: 'path', type: 'string', required: true }],
   },
   {
-    method: "GET",
-    path: "/search",
-    handler: "search",
-    params: [{ name: "q", location: "query", type: "string", required: false }],
-    response: { fields: { id: "integer", title: "string" }, isArray: true },
+    method: 'GET',
+    path: '/search',
+    handler: 'search',
+    params: [{ name: 'q', location: 'query', type: 'string', required: false }],
+    response: { fields: { id: 'integer', title: 'string' }, isArray: true },
   },
 ];
 
-describe("OpenApiGenerator — document structure", () => {
+describe('OpenApiGenerator — document structure', () => {
   const gen = new OpenApiGenerator();
 
-  it("produces a valid OpenAPI 3.1 document skeleton", () => {
+  it('produces a valid OpenAPI 3.1 document skeleton', () => {
     const doc = gen.buildDocument(sampleEndpoints, {
-      baseUrl: "http://localhost:8080",
-      title: "My API",
-      version: "2.1.0",
+      baseUrl: 'http://localhost:8080',
+      title: 'My API',
+      version: '2.1.0',
     });
 
-    expect(doc.openapi).toBe("3.1.0");
-    expect(doc.info).toEqual({ title: "My API", version: "2.1.0" });
-    expect(doc.servers).toEqual([{ url: "http://localhost:8080" }]);
-    expect(doc.paths).toBeTypeOf("object");
+    expect(doc.openapi).toBe('3.1.0');
+    expect(doc.info).toEqual({ title: 'My API', version: '2.1.0' });
+    expect(doc.servers).toEqual([{ url: 'http://localhost:8080' }]);
+    expect(doc.paths).toBeTypeOf('object');
   });
 
-  it("defaults title/version and omits servers when no baseUrl", () => {
+  it('defaults title/version and omits servers when no baseUrl', () => {
     const doc = gen.buildDocument(sampleEndpoints) as Record<string, unknown>;
-    expect(doc.info).toEqual({ title: "API", version: "1.0.0" });
+    expect(doc.info).toEqual({ title: 'API', version: '1.0.0' });
     expect(doc.servers).toBeUndefined();
   });
 
-  it("normalizes path params to OpenAPI {name} style", () => {
+  it('normalizes path params to OpenAPI {name} style', () => {
     const doc = gen.buildDocument(sampleEndpoints) as Record<string, unknown>;
     const paths = doc.paths as Record<string, unknown>;
-    expect(paths).toHaveProperty("/users/{id}");
-    expect(paths).not.toHaveProperty("/users/:id");
+    expect(paths).toHaveProperty('/users/{id}');
+    expect(paths).not.toHaveProperty('/users/:id');
   });
 
-  it("normalizes Flask/Django typed path params", () => {
+  it('normalizes Flask/Django typed path params', () => {
     const doc = gen.buildDocument([
-      { method: "GET", path: "/items/<int:pk>", handler: "getItem", params: [] },
-      { method: "GET", path: "/tags/<slug>", handler: "getTag", params: [] },
+      {
+        method: 'GET',
+        path: '/items/<int:pk>',
+        handler: 'getItem',
+        params: [],
+      },
+      { method: 'GET', path: '/tags/<slug>', handler: 'getTag', params: [] },
     ]) as Record<string, unknown>;
     const paths = doc.paths as Record<string, unknown>;
-    expect(paths).toHaveProperty("/items/{pk}");
-    expect(paths).toHaveProperty("/tags/{slug}");
+    expect(paths).toHaveProperty('/items/{pk}');
+    expect(paths).toHaveProperty('/tags/{slug}');
   });
 
-  it("merges multiple methods on the same path into one path item", () => {
+  it('merges multiple methods on the same path into one path item', () => {
     const doc = gen.buildDocument(sampleEndpoints) as Record<string, unknown>;
     const paths = doc.paths as Record<string, Record<string, unknown>>;
-    expect(Object.keys(paths["/users/{id}"]).sort()).toEqual(["delete", "get"]);
+    expect(Object.keys(paths['/users/{id}']).sort()).toEqual(['delete', 'get']);
   });
 });
 
-describe("OpenApiGenerator — operations", () => {
+describe('OpenApiGenerator — operations', () => {
   const gen = new OpenApiGenerator();
-  const doc = gen.buildDocument(sampleEndpoints, { baseUrl: "http://localhost:3000" }) as Record<
-    string,
-    Record<string, Record<string, Record<string, unknown>>>
-  >;
+  const doc = gen.buildDocument(sampleEndpoints, {
+    baseUrl: 'http://localhost:3000',
+  }) as Record<string, Record<string, Record<string, Record<string, unknown>>>>;
   const paths = doc.paths;
 
-  it("marks path parameters as required with a schema", () => {
-    const op = paths["/users/{id}"].get;
+  it('marks path parameters as required with a schema', () => {
+    const op = paths['/users/{id}'].get;
     const params = op.parameters as Array<Record<string, unknown>>;
     expect(params).toEqual([
-      { name: "id", in: "path", required: true, schema: { type: "string" } },
+      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
     ]);
   });
 
-  it("emits query params with required:false by default", () => {
-    const op = paths["/search"].get;
+  it('emits query params with required:false by default', () => {
+    const op = paths['/search'].get;
     const params = op.parameters as Array<Record<string, unknown>>;
-    expect(params[0]).toMatchObject({ name: "q", in: "query", required: false });
+    expect(params[0]).toMatchObject({
+      name: 'q',
+      in: 'query',
+      required: false,
+    });
   });
 
-  it("builds a JSON requestBody for POST with typed fields", () => {
-    const op = paths["/users"].post;
+  it('builds a JSON requestBody for POST with typed fields', () => {
+    const op = paths['/users'].post;
     expect(op.requestBody).toEqual({
       required: true,
       content: {
-        "application/json": {
+        'application/json': {
           schema: {
-            type: "object",
+            type: 'object',
             properties: {
-              name: { type: "string" },
-              age: { type: "integer" },
-              active: { type: "boolean" },
+              name: { type: 'string' },
+              age: { type: 'integer' },
+              active: { type: 'boolean' },
             },
           },
         },
@@ -121,111 +129,142 @@ describe("OpenApiGenerator — operations", () => {
     });
   });
 
-  it("does not emit a requestBody for GET", () => {
-    expect(paths["/users"].get.requestBody).toBeUndefined();
+  it('does not emit a requestBody for GET', () => {
+    expect(paths['/users'].get.requestBody).toBeUndefined();
   });
 
-  it("uses method-specific success status codes", () => {
-    expect(Object.keys(paths["/users"].get.responses as object)).toEqual(["200"]);
-    expect(Object.keys(paths["/users"].post.responses as object)).toEqual(["201"]);
-    expect(Object.keys(paths["/users/{id}"].delete.responses as object)).toEqual(["204"]);
+  it('uses method-specific success status codes', () => {
+    expect(Object.keys(paths['/users'].get.responses as object)).toEqual([
+      '200',
+    ]);
+    expect(Object.keys(paths['/users'].post.responses as object)).toEqual([
+      '201',
+    ]);
+    expect(
+      Object.keys(paths['/users/{id}'].delete.responses as object)
+    ).toEqual(['204']);
   });
 
-  it("emits an array response schema when isArray is set", () => {
-    const responses = paths["/search"].get.responses as Record<string, Record<string, unknown>>;
-    const content = responses["200"].content as Record<string, Record<string, unknown>>;
-    expect(content["application/json"].schema).toEqual({
-      type: "array",
+  it('emits an array response schema when isArray is set', () => {
+    const responses = paths['/search'].get.responses as Record<
+      string,
+      Record<string, unknown>
+    >;
+    const content = responses['200'].content as Record<
+      string,
+      Record<string, unknown>
+    >;
+    expect(content['application/json'].schema).toEqual({
+      type: 'array',
       items: {
-        type: "object",
-        properties: { id: { type: "integer" }, title: { type: "string" } },
+        type: 'object',
+        properties: { id: { type: 'integer' }, title: { type: 'string' } },
       },
     });
   });
 
-  it("204 responses carry no content", () => {
-    const responses = paths["/users/{id}"].delete.responses as Record<string, Record<string, unknown>>;
-    expect(responses["204"].content).toBeUndefined();
-    expect(responses["204"].description).toBe("No Content");
+  it('204 responses carry no content', () => {
+    const responses = paths['/users/{id}'].delete.responses as Record<
+      string,
+      Record<string, unknown>
+    >;
+    expect(responses['204'].content).toBeUndefined();
+    expect(responses['204'].description).toBe('No Content');
   });
 
-  it("falls back to a generated operationId when handler is empty", () => {
+  it('falls back to a generated operationId when handler is empty', () => {
     const d = gen.buildDocument([
-      { method: "GET", path: "/health", handler: "", params: [] },
+      { method: 'GET', path: '/health', handler: '', params: [] },
     ]) as Record<string, Record<string, Record<string, unknown>>>;
-    expect(d.paths["/health"].get.operationId).toBe("get_health");
+    expect(d.paths['/health'].get.operationId).toBe('get_health');
   });
 
-  it("falls back when handler is a non-identifier placeholder like <unknown>", () => {
+  it('falls back when handler is a non-identifier placeholder like <unknown>', () => {
     const d = gen.buildDocument([
-      { method: "POST", path: "/imrobot/verify", handler: "<unknown>", params: [] },
+      {
+        method: 'POST',
+        path: '/imrobot/verify',
+        handler: '<unknown>',
+        params: [],
+      },
     ]) as Record<string, Record<string, Record<string, unknown>>>;
-    expect(d.paths["/imrobot/verify"].post.operationId).toBe("post_imrobot_verify");
+    expect(d.paths['/imrobot/verify'].post.operationId).toBe(
+      'post_imrobot_verify'
+    );
   });
 });
 
-describe("OpenApiGenerator — serialization", () => {
+describe('OpenApiGenerator — serialization', () => {
   const gen = new OpenApiGenerator();
 
-  it("emits valid JSON by default", () => {
-    const out = gen.generate(sampleEndpoints, { baseUrl: "http://localhost:3000" });
+  it('emits valid JSON by default', () => {
+    const out = gen.generate(sampleEndpoints, {
+      baseUrl: 'http://localhost:3000',
+    });
     const parsed = JSON.parse(out);
-    expect(parsed.openapi).toBe("3.1.0");
-    expect(parsed.paths["/users/{id}"].get).toBeDefined();
+    expect(parsed.openapi).toBe('3.1.0');
+    expect(parsed.paths['/users/{id}'].get).toBeDefined();
   });
 
-  it("emits YAML that parses back to the same document", () => {
-    const opts = { baseUrl: "http://localhost:3000", title: "RT", version: "9.9.9" } as const;
+  it('emits YAML that parses back to the same document', () => {
+    const opts = {
+      baseUrl: 'http://localhost:3000',
+      title: 'RT',
+      version: '9.9.9',
+    } as const;
     const doc = gen.buildDocument(sampleEndpoints, opts);
-    const ymlStr = gen.generate(sampleEndpoints, { ...opts, format: "yaml" });
+    const ymlStr = gen.generate(sampleEndpoints, { ...opts, format: 'yaml' });
     const reparsed = yaml.load(ymlStr);
     expect(reparsed).toEqual(doc);
   });
 
-  it("quotes path keys containing braces so YAML stays valid", () => {
-    const ymlStr = gen.generate(sampleEndpoints, { format: "yaml" });
+  it('quotes path keys containing braces so YAML stays valid', () => {
+    const ymlStr = gen.generate(sampleEndpoints, { format: 'yaml' });
     expect(ymlStr).toContain('"/users/{id}":');
     // round-trips
-    const reparsed = yaml.load(ymlStr) as Record<string, Record<string, unknown>>;
-    expect(reparsed.paths).toHaveProperty("/users/{id}");
+    const reparsed = yaml.load(ymlStr) as Record<
+      string,
+      Record<string, unknown>
+    >;
+    expect(reparsed.paths).toHaveProperty('/users/{id}');
   });
 
-  it("quotes numeric status-code keys in YAML", () => {
-    const ymlStr = gen.generate(sampleEndpoints, { format: "yaml" });
+  it('quotes numeric status-code keys in YAML', () => {
+    const ymlStr = gen.generate(sampleEndpoints, { format: 'yaml' });
     expect(ymlStr).toContain('"200":');
     expect(ymlStr).toContain('"201":');
   });
 });
 
-describe("toYaml — primitive handling", () => {
-  it("round-trips nested objects, arrays, and scalars", () => {
+describe('toYaml — primitive handling', () => {
+  it('round-trips nested objects, arrays, and scalars', () => {
     const obj = {
       a: 1,
-      b: "two",
+      b: 'two',
       c: true,
       d: null,
       e: [1, 2, 3],
-      f: { g: ["x", "y"], h: {} },
+      f: { g: ['x', 'y'], h: {} },
       i: [],
     };
     expect(yaml.load(toYaml(obj))).toEqual(obj);
   });
 
-  it("handles arrays of objects", () => {
-    const obj = { servers: [{ url: "http://a" }, { url: "http://b" }] };
+  it('handles arrays of objects', () => {
+    const obj = { servers: [{ url: 'http://a' }, { url: 'http://b' }] };
     expect(yaml.load(toYaml(obj))).toEqual(obj);
   });
 });
 
-describe("TestGenerator integration", () => {
+describe('TestGenerator integration', () => {
   it("routes the 'openapi' format through generate()", () => {
     const out = new TestGenerator().generate({
       endpoints: sampleEndpoints,
-      output: "./out",
-      format: "openapi",
-      baseUrl: "http://localhost:3000",
+      output: './out',
+      format: 'openapi',
+      baseUrl: 'http://localhost:3000',
     });
     const parsed = JSON.parse(out);
-    expect(parsed.openapi).toBe("3.1.0");
+    expect(parsed.openapi).toBe('3.1.0');
   });
 });

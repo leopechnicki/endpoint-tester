@@ -1,7 +1,15 @@
-import type { Adapter, Endpoint, EndpointParam, HttpMethod } from "../types.js";
-import { Framework } from "../types.js";
+import type { Adapter, Endpoint, EndpointParam, HttpMethod } from '../types.js';
+import { Framework } from '../types.js';
 
-const HTTP_METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"] as const;
+const HTTP_METHODS = [
+  'GET',
+  'POST',
+  'PUT',
+  'DELETE',
+  'PATCH',
+  'HEAD',
+  'OPTIONS',
+] as const;
 
 /**
  * Parses Gin (github.com/gin-gonic/gin) route definitions from Go source code.
@@ -14,11 +22,11 @@ const HTTP_METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"
  */
 export class GinAdapter implements Adapter {
   readonly framework = Framework.Gin;
-  readonly fileExtensions = [".go"];
+  readonly fileExtensions = ['.go'];
 
   parse(source: string, filePath?: string): Endpoint[] {
     const endpoints: Endpoint[] = [];
-    const lines = source.split("\n");
+    const lines = source.split('\n');
 
     // Detect group prefixes: v1 := r.Group("/api/v1")
     const groupPrefixes = this.detectGroupPrefixes(source);
@@ -38,13 +46,13 @@ export class GinAdapter implements Adapter {
     line: string,
     lineNumber: number,
     filePath?: string,
-    groupPrefixes?: Map<string, string>,
+    groupPrefixes?: Map<string, string>
   ): Endpoint | null {
     // Match: identifier.METHOD("/path", handler) — Gin uses uppercase method names
-    const methodsGroup = HTTP_METHODS.join("|");
+    const methodsGroup = HTTP_METHODS.join('|');
     const pattern = new RegExp(
       `(\\w+)\\.(${methodsGroup})\\s*\\(\\s*"([^"]+)"\\s*,\\s*(\\w+)`,
-      "i",
+      'i'
     );
     const match = line.match(pattern);
     if (!match) return null;
@@ -59,8 +67,8 @@ export class GinAdapter implements Adapter {
     }
 
     // Normalize: ensure leading slash
-    if (!fullPath.startsWith("/")) {
-      fullPath = "/" + fullPath;
+    if (!fullPath.startsWith('/')) {
+      fullPath = '/' + fullPath;
     }
 
     const params = this.extractParams(fullPath);
@@ -84,8 +92,8 @@ export class GinAdapter implements Adapter {
     while ((match = paramPattern.exec(path)) !== null) {
       params.push({
         name: match[1],
-        location: "path",
-        type: "string",
+        location: 'path',
+        type: 'string',
         required: true,
       });
     }

@@ -1,6 +1,6 @@
-import { readFileSync } from "node:fs";
-import { glob } from "glob";
-import type { Adapter, Endpoint, ScanOptions } from "./types.js";
+import { readFileSync } from 'node:fs';
+import { glob } from 'glob';
+import type { Adapter, Endpoint, ScanOptions } from './types.js';
 
 export class Scanner {
   private adapter: Adapter;
@@ -14,12 +14,20 @@ export class Scanner {
    */
   async scan(options: ScanOptions): Promise<Endpoint[]> {
     const adapter = this.adapter;
-    const extensions = adapter.fileExtensions.map((ext) => ext.replace(/^\./, ""));
-    const pattern = extensions.length === 1
-      ? `**/*.${extensions[0]}`
-      : `**/*.{${extensions.join(",")}}`;
+    const extensions = adapter.fileExtensions.map((ext) =>
+      ext.replace(/^\./, '')
+    );
+    const pattern =
+      extensions.length === 1
+        ? `**/*.${extensions[0]}`
+        : `**/*.{${extensions.join(',')}}`;
 
-    const defaultExclude = ["node_modules/**", "dist/**", "build/**", ".git/**"];
+    const defaultExclude = [
+      'node_modules/**',
+      'dist/**',
+      'build/**',
+      '.git/**',
+    ];
     const exclude = [...defaultExclude, ...(options.exclude ?? [])];
 
     const files = await glob(pattern, {
@@ -33,9 +41,11 @@ export class Scanner {
     for (const file of files) {
       let source: string;
       try {
-        source = readFileSync(file, "utf-8");
+        source = readFileSync(file, 'utf-8');
       } catch (err) {
-        console.warn(`Warning: could not read file ${file}: ${(err as Error).message}`);
+        console.warn(
+          `Warning: could not read file ${file}: ${(err as Error).message}`
+        );
         continue;
       }
       const found = adapter.parse(source, file);

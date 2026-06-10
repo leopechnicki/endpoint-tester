@@ -1,140 +1,142 @@
-import { describe, it, expect } from "vitest";
-import { TestGenerator } from "../src/generator.js";
-import type { Endpoint } from "../src/types.js";
+import { describe, it, expect } from 'vitest';
+import { TestGenerator } from '../src/generator.js';
+import type { Endpoint } from '../src/types.js';
 
-describe("TestGenerator — Go format", () => {
+describe('TestGenerator — Go format', () => {
   const generator = new TestGenerator();
 
-  it("generates a valid Go function name for the root path /", () => {
+  it('generates a valid Go function name for the root path /', () => {
     const endpoints: Endpoint[] = [
-      { method: "GET", path: "/", handler: "rootHandler", params: [] },
+      { method: 'GET', path: '/', handler: 'rootHandler', params: [] },
     ];
     const output = generator.generate({
       endpoints,
-      output: "endpoint_test.go",
-      format: "go",
+      output: 'endpoint_test.go',
+      format: 'go',
     });
-    expect(output).toContain("func TestGet_Root(t *testing.T)");
+    expect(output).toContain('func TestGet_Root(t *testing.T)');
     expect(output).not.toMatch(/func TestGet_\(t \*testing\.T\)/);
   });
 
-  it("generates a valid WithAuth function name for root path", () => {
+  it('generates a valid WithAuth function name for root path', () => {
     const endpoints: Endpoint[] = [
-      { method: "GET", path: "/", handler: "rootHandler", params: [] },
+      { method: 'GET', path: '/', handler: 'rootHandler', params: [] },
     ];
     const output = generator.generate({
       endpoints,
-      output: "endpoint_test.go",
-      format: "go",
+      output: 'endpoint_test.go',
+      format: 'go',
     });
-    expect(output).toContain("func TestGet_Root_WithAuth(t *testing.T)");
+    expect(output).toContain('func TestGet_Root_WithAuth(t *testing.T)');
   });
 
-  it("generates a standard Go function name for a normal path", () => {
+  it('generates a standard Go function name for a normal path', () => {
     const endpoints: Endpoint[] = [
-      { method: "GET", path: "/users", handler: "getUsers", params: [] },
+      { method: 'GET', path: '/users', handler: 'getUsers', params: [] },
     ];
     const output = generator.generate({
       endpoints,
-      output: "endpoint_test.go",
-      format: "go",
+      output: 'endpoint_test.go',
+      format: 'go',
     });
-    expect(output).toContain("func TestGet_users(t *testing.T)");
+    expect(output).toContain('func TestGet_users(t *testing.T)');
   });
 
-  it("generates Go tests with correct package declaration and imports", () => {
+  it('generates Go tests with correct package declaration and imports', () => {
     const endpoints: Endpoint[] = [
-      { method: "POST", path: "/items", handler: "createItem", params: [] },
+      { method: 'POST', path: '/items', handler: 'createItem', params: [] },
     ];
     const output = generator.generate({
       endpoints,
-      output: "endpoint_test.go",
-      format: "go",
+      output: 'endpoint_test.go',
+      format: 'go',
     });
-    expect(output).toContain("package endpoint_test");
+    expect(output).toContain('package endpoint_test');
     expect(output).toContain('"net/http"');
     expect(output).toContain('"testing"');
   });
 
-  it("generates consistent func names for different HTTP methods on root path", () => {
+  it('generates consistent func names for different HTTP methods on root path', () => {
     const endpoints: Endpoint[] = [
-      { method: "GET", path: "/", handler: "getRoot", params: [] },
-      { method: "POST", path: "/", handler: "postRoot", params: [] },
+      { method: 'GET', path: '/', handler: 'getRoot', params: [] },
+      { method: 'POST', path: '/', handler: 'postRoot', params: [] },
     ];
     const output = generator.generate({
       endpoints,
-      output: "endpoint_test.go",
-      format: "go",
+      output: 'endpoint_test.go',
+      format: 'go',
     });
-    expect(output).toContain("func TestGet_Root(t *testing.T)");
-    expect(output).toContain("func TestPost_Root(t *testing.T)");
+    expect(output).toContain('func TestGet_Root(t *testing.T)');
+    expect(output).toContain('func TestPost_Root(t *testing.T)');
   });
 
-  it("generates empty body test for POST endpoints", () => {
+  it('generates empty body test for POST endpoints', () => {
     const endpoints: Endpoint[] = [
-      { method: "POST", path: "/users", handler: "createUser", params: [] },
+      { method: 'POST', path: '/users', handler: 'createUser', params: [] },
     ];
     const output = generator.generate({
       endpoints,
-      output: "endpoint_test.go",
-      format: "go",
+      output: 'endpoint_test.go',
+      format: 'go',
     });
-    expect(output).toContain("func TestPost_users_EmptyBody(t *testing.T)");
-    expect(output).toContain("expected 4xx for empty body");
+    expect(output).toContain('func TestPost_users_EmptyBody(t *testing.T)');
+    expect(output).toContain('expected 4xx for empty body');
   });
 
-  it("generates invalid auth test for all endpoints", () => {
+  it('generates invalid auth test for all endpoints', () => {
     const endpoints: Endpoint[] = [
-      { method: "GET", path: "/users", handler: "getUsers", params: [] },
+      { method: 'GET', path: '/users', handler: 'getUsers', params: [] },
     ];
     const output = generator.generate({
       endpoints,
-      output: "endpoint_test.go",
-      format: "go",
+      output: 'endpoint_test.go',
+      format: 'go',
     });
-    expect(output).toContain("func TestGet_users_WithInvalidAuth(t *testing.T)");
-    expect(output).toContain("InvalidTokenFormat");
+    expect(output).toContain(
+      'func TestGet_users_WithInvalidAuth(t *testing.T)'
+    );
+    expect(output).toContain('InvalidTokenFormat');
   });
 
-  it("generates boundary tests for path params", () => {
+  it('generates boundary tests for path params', () => {
     const endpoints: Endpoint[] = [
       {
-        method: "GET",
-        path: "/users/:id",
-        handler: "getUser",
-        params: [{ name: "id", location: "path", type: "id" }],
+        method: 'GET',
+        path: '/users/:id',
+        handler: 'getUser',
+        params: [{ name: 'id', location: 'path', type: 'id' }],
       },
     ];
     const output = generator.generate({
       endpoints,
-      output: "endpoint_test.go",
-      format: "go",
+      output: 'endpoint_test.go',
+      format: 'go',
     });
-    expect(output).toContain("Boundary_Id");
-    expect(output).toContain("nonexistent");
+    expect(output).toContain('Boundary_Id');
+    expect(output).toContain('nonexistent');
   });
 
-  it("includes bytes and json imports when body endpoints are present", () => {
+  it('includes bytes and json imports when body endpoints are present', () => {
     const endpoints: Endpoint[] = [
-      { method: "POST", path: "/users", handler: "createUser", params: [] },
+      { method: 'POST', path: '/users', handler: 'createUser', params: [] },
     ];
     const output = generator.generate({
       endpoints,
-      output: "endpoint_test.go",
-      format: "go",
+      output: 'endpoint_test.go',
+      format: 'go',
     });
     expect(output).toContain('"bytes"');
     expect(output).toContain('"encoding/json"');
   });
 
-  it("omits bytes and json imports when no body endpoints", () => {
+  it('omits bytes and json imports when no body endpoints', () => {
     const endpoints: Endpoint[] = [
-      { method: "GET", path: "/users", handler: "getUsers", params: [] },
+      { method: 'GET', path: '/users', handler: 'getUsers', params: [] },
     ];
     const output = generator.generate({
       endpoints,
-      output: "endpoint_test.go",
-      format: "go",
+      output: 'endpoint_test.go',
+      format: 'go',
     });
     expect(output).not.toContain('"bytes"');
     expect(output).not.toContain('"encoding/json"');

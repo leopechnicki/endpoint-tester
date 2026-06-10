@@ -1,5 +1,5 @@
-import type { Adapter, Endpoint, EndpointParam, HttpMethod } from "../types.js";
-import { Framework } from "../types.js";
+import type { Adapter, Endpoint, EndpointParam, HttpMethod } from '../types.js';
+import { Framework } from '../types.js';
 
 /**
  * Parses NestJS route definitions from source code.
@@ -15,11 +15,11 @@ import { Framework } from "../types.js";
  */
 export class NestJSAdapter implements Adapter {
   readonly framework = Framework.NestJS;
-  readonly fileExtensions = [".ts", ".js"];
+  readonly fileExtensions = ['.ts', '.js'];
 
   parse(source: string, filePath?: string): Endpoint[] {
     const endpoints: Endpoint[] = [];
-    const lines = source.split("\n");
+    const lines = source.split('\n');
 
     // Detect class-level @Controller('/prefix')
     const controllerPrefix = this.detectControllerPrefix(source);
@@ -29,18 +29,20 @@ export class NestJSAdapter implements Adapter {
 
       // Match @Get(), @Post(), @Put(), @Delete(), @Patch(), @Head(), @Options()
       const decoratorMatch = line.match(
-        /^@(Get|Post|Put|Delete|Patch|Head|Options)\s*\(\s*(?:['"]([^'"]*)['"]\s*)?\)/i,
+        /^@(Get|Post|Put|Delete|Patch|Head|Options)\s*\(\s*(?:['"]([^'"]*)['"]\s*)?\)/i
       );
       if (!decoratorMatch) continue;
 
       const method = decoratorMatch[1].toUpperCase() as HttpMethod;
-      const path = decoratorMatch[2] ?? "";
+      const path = decoratorMatch[2] ?? '';
 
       // Build full path with controller prefix
-      let fullPath = controllerPrefix ? controllerPrefix + (path ? "/" + path : "") : (path || "/");
+      let fullPath = controllerPrefix
+        ? controllerPrefix + (path ? '/' + path : '')
+        : path || '/';
       // Normalize: remove double slashes, ensure leading slash
-      fullPath = "/" + fullPath.replace(/^\/+/, "").replace(/\/+/g, "/");
-      if (fullPath !== "/" && fullPath.endsWith("/")) {
+      fullPath = '/' + fullPath.replace(/^\/+/, '').replace(/\/+/g, '/');
+      if (fullPath !== '/' && fullPath.endsWith('/')) {
         fullPath = fullPath.slice(0, -1);
       }
 
@@ -61,10 +63,13 @@ export class NestJSAdapter implements Adapter {
         line: i + 1,
       };
 
-      if (methodInfo.bodyFields && Object.keys(methodInfo.bodyFields).length > 0) {
-        endpoint.body = { type: "object", fields: methodInfo.bodyFields };
+      if (
+        methodInfo.bodyFields &&
+        Object.keys(methodInfo.bodyFields).length > 0
+      ) {
+        endpoint.body = { type: 'object', fields: methodInfo.bodyFields };
       } else if (methodInfo.hasBody) {
-        endpoint.body = { type: "object", fields: {} };
+        endpoint.body = { type: 'object', fields: {} };
       }
 
       endpoints.push(endpoint);
@@ -78,20 +83,20 @@ export class NestJSAdapter implements Adapter {
 
   private detectControllerPrefix(source: string): string {
     const match = source.match(/@Controller\s*\(\s*['"]([^'"]*)['"]\s*\)/);
-    if (!match) return "";
+    if (!match) return '';
     return match[1];
   }
 
   private parseMethodSignature(
     lines: string[],
-    startIndex: number,
+    startIndex: number
   ): {
     handlerName: string;
     queryParams: EndpointParam[];
     bodyFields: Record<string, string> | null;
     hasBody: boolean;
   } {
-    let handlerName = "<unknown>";
+    let handlerName = '<unknown>';
     const queryParams: EndpointParam[] = [];
     let bodyFields: Record<string, string> | null = null;
     let hasBody = false;
@@ -101,16 +106,18 @@ export class NestJSAdapter implements Adapter {
       const line = lines[i].trim();
 
       // Skip other decorators
-      if (line.startsWith("@") && !line.match(/^@(Param|Query|Body|Headers)/)) continue;
+      if (line.startsWith('@') && !line.match(/^@(Param|Query|Body|Headers)/))
+        continue;
 
       // @Query('name') name: type — can appear multiple times on one line
-      const queryPattern = /@Query\s*\(\s*['"](\w+)['"]\s*\)\s*\w+\s*:\s*(\w+)/g;
+      const queryPattern =
+        /@Query\s*\(\s*['"](\w+)['"]\s*\)\s*\w+\s*:\s*(\w+)/g;
       let queryMatch: RegExpExecArray | null;
       let foundQuery = false;
       while ((queryMatch = queryPattern.exec(line)) !== null) {
         queryParams.push({
           name: queryMatch[1],
-          location: "query",
+          location: 'query',
           type: this.mapNestType(queryMatch[2]),
         });
         foundQuery = true;
@@ -123,9 +130,9 @@ export class NestJSAdapter implements Adapter {
         const typeMatch = line.match(/@Query\s*\(\s*\)\s*\w+\s*:\s*(\w+)/);
         if (typeMatch) {
           // Try to find the DTO class definition
-          const dtoFields = this.findDtoFields(lines.join("\n"), typeMatch[1]);
+          const dtoFields = this.findDtoFields(lines.join('\n'), typeMatch[1]);
           for (const [name, type] of Object.entries(dtoFields)) {
-            queryParams.push({ name, location: "query", type });
+            queryParams.push({ name, location: 'query', type });
           }
         }
         continue;
@@ -135,7 +142,7 @@ export class NestJSAdapter implements Adapter {
       const bodyMatch = line.match(/@Body\s*\(\s*\)\s*\w+\s*:\s*(\w+)/);
       if (bodyMatch) {
         hasBody = true;
-        bodyFields = this.findDtoFields(lines.join("\n"), bodyMatch[1]);
+        bodyFields = this.findDtoFields(lines.join('\n'), bodyMatch[1]);
         continue;
       }
 
@@ -147,7 +154,7 @@ export class NestJSAdapter implements Adapter {
 
       // Method name: async methodName(...) or methodName(...)
       const methodMatch = line.match(/(?:async\s+)?(\w+)\s*\(/);
-      if (methodMatch && !line.startsWith("@")) {
+      if (methodMatch && !line.startsWith('@')) {
         handlerName = methodMatch[1];
         break;
       }
@@ -160,12 +167,15 @@ export class NestJSAdapter implements Adapter {
    * Find DTO/class field definitions in source.
    * Matches: fieldName: type; or @IsString() fieldName: string;
    */
-  private findDtoFields(source: string, dtoName: string): Record<string, string> {
+  private findDtoFields(
+    source: string,
+    dtoName: string
+  ): Record<string, string> {
     const fields: Record<string, string> = {};
 
     // Find class definition: class DtoName { ... }
     const classPattern = new RegExp(
-      `class\\s+${this.escapeRegex(dtoName)}[^{]*\\{([\\s\\S]*?)\\n\\s*\\}`,
+      `class\\s+${this.escapeRegex(dtoName)}[^{]*\\{([\\s\\S]*?)\\n\\s*\\}`
     );
     const classMatch = source.match(classPattern);
     if (!classMatch) return fields;
@@ -173,11 +183,17 @@ export class NestJSAdapter implements Adapter {
     const classBody = classMatch[1];
     // Match field declarations: fieldName: type; or fieldName?: type;
     // Simple line-by-line matching to avoid complex regex issues
-    const bodyLines = classBody.split("\n");
+    const bodyLines = classBody.split('\n');
     for (const bodyLine of bodyLines) {
       const trimmed = bodyLine.trim();
       // Skip decorators, empty lines, comments
-      if (!trimmed || trimmed.startsWith("@") || trimmed.startsWith("//") || trimmed.startsWith("/*")) continue;
+      if (
+        !trimmed ||
+        trimmed.startsWith('@') ||
+        trimmed.startsWith('//') ||
+        trimmed.startsWith('/*')
+      )
+        continue;
       // Match: fieldName: Type or fieldName?: Type
       const fieldMatch = trimmed.match(/^(\w+)\??\s*:\s*(\w+)/);
       if (fieldMatch) {
@@ -190,14 +206,14 @@ export class NestJSAdapter implements Adapter {
 
   private mapNestType(tsType: string): string {
     switch (tsType.toLowerCase()) {
-      case "number":
-        return "number";
-      case "boolean":
-        return "boolean";
-      case "string":
-        return "string";
+      case 'number':
+        return 'number';
+      case 'boolean':
+        return 'boolean';
+      case 'string':
+        return 'string';
       default:
-        return "string";
+        return 'string';
     }
   }
 
@@ -206,7 +222,12 @@ export class NestJSAdapter implements Adapter {
     const paramPattern = /:(\w+)/g;
     let match: RegExpExecArray | null;
     while ((match = paramPattern.exec(path)) !== null) {
-      params.push({ name: match[1], location: "path", type: "string", required: true });
+      params.push({
+        name: match[1],
+        location: 'path',
+        type: 'string',
+        required: true,
+      });
     }
     return params;
   }
@@ -214,10 +235,10 @@ export class NestJSAdapter implements Adapter {
   private inferResponseFields(source: string, endpoints: Endpoint[]): void {
     for (const ep of endpoints) {
       if (!ep.line) continue;
-      const lines = source.split("\n");
+      const lines = source.split('\n');
       const startLine = ep.line - 1;
       const endLine = Math.min(startLine + 30, lines.length);
-      const block = lines.slice(startLine, endLine).join("\n");
+      const block = lines.slice(startLine, endLine).join('\n');
 
       // return { field: value } or return this.service.method()
       const returnMatch = block.match(/return\s+\{([^}]*)\}/);
@@ -226,7 +247,7 @@ export class NestJSAdapter implements Adapter {
         const keyPattern = /(\w+)\s*:/g;
         let keyMatch: RegExpExecArray | null;
         while ((keyMatch = keyPattern.exec(returnMatch[1])) !== null) {
-          fields[keyMatch[1]] = "string";
+          fields[keyMatch[1]] = 'string';
         }
         if (Object.keys(fields).length > 0) {
           ep.response = { fields };
@@ -236,6 +257,6 @@ export class NestJSAdapter implements Adapter {
   }
 
   private escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 }
