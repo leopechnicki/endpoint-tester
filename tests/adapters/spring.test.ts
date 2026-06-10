@@ -1,10 +1,10 @@
-import { describe, it, expect } from "vitest";
-import { SpringAdapter } from "../../src/adapters/spring.js";
+import { describe, it, expect } from 'vitest';
+import { SpringAdapter } from '../../src/adapters/spring.js';
 
-describe("SpringAdapter", () => {
+describe('SpringAdapter', () => {
   const adapter = new SpringAdapter();
 
-  it("should parse @GetMapping", () => {
+  it('should parse @GetMapping', () => {
     const source = `
 @GetMapping("/users")
 public ResponseEntity getUsers() {
@@ -14,12 +14,12 @@ public ResponseEntity getUsers() {
     const endpoints = adapter.parse(source);
 
     expect(endpoints).toHaveLength(1);
-    expect(endpoints[0].method).toBe("GET");
-    expect(endpoints[0].path).toBe("/users");
-    expect(endpoints[0].handler).toBe("getUsers");
+    expect(endpoints[0].method).toBe('GET');
+    expect(endpoints[0].path).toBe('/users');
+    expect(endpoints[0].handler).toBe('getUsers');
   });
 
-  it("should parse @PostMapping", () => {
+  it('should parse @PostMapping', () => {
     const source = `
 @PostMapping("/users")
 public User createUser(@RequestBody User user) {
@@ -29,11 +29,11 @@ public User createUser(@RequestBody User user) {
     const endpoints = adapter.parse(source);
 
     expect(endpoints).toHaveLength(1);
-    expect(endpoints[0].method).toBe("POST");
-    expect(endpoints[0].path).toBe("/users");
+    expect(endpoints[0].method).toBe('POST');
+    expect(endpoints[0].path).toBe('/users');
   });
 
-  it("should parse @PutMapping and @DeleteMapping", () => {
+  it('should parse @PutMapping and @DeleteMapping', () => {
     const source = `
 @PutMapping("/users/{id}")
 public User updateUser(@PathVariable Long id) {
@@ -47,12 +47,12 @@ public void deleteUser(@PathVariable Long id) {
     const endpoints = adapter.parse(source);
 
     expect(endpoints).toHaveLength(2);
-    expect(endpoints[0].method).toBe("PUT");
-    expect(endpoints[0].path).toBe("/users/:id");
-    expect(endpoints[1].method).toBe("DELETE");
+    expect(endpoints[0].method).toBe('PUT');
+    expect(endpoints[0].path).toBe('/users/:id');
+    expect(endpoints[1].method).toBe('DELETE');
   });
 
-  it("should parse @RequestMapping with method", () => {
+  it('should parse @RequestMapping with method', () => {
     const source = `
 @RequestMapping("/items", method = RequestMethod.GET)
 public List<Item> getItems() {
@@ -62,11 +62,11 @@ public List<Item> getItems() {
     const endpoints = adapter.parse(source);
 
     expect(endpoints).toHaveLength(1);
-    expect(endpoints[0].method).toBe("GET");
-    expect(endpoints[0].path).toBe("/items");
+    expect(endpoints[0].method).toBe('GET');
+    expect(endpoints[0].path).toBe('/items');
   });
 
-  it("should detect class-level @RequestMapping prefix", () => {
+  it('should detect class-level @RequestMapping prefix', () => {
     const source = `
 @RequestMapping("/api/v1")
 public class UserController {
@@ -80,10 +80,10 @@ public class UserController {
     const endpoints = adapter.parse(source);
 
     expect(endpoints).toHaveLength(1);
-    expect(endpoints[0].path).toBe("/api/v1/users");
+    expect(endpoints[0].path).toBe('/api/v1/users');
   });
 
-  it("should extract path parameters", () => {
+  it('should extract path parameters', () => {
     const source = `
 @GetMapping("/users/{userId}/posts/{postId}")
 public Post getPost(@PathVariable Long userId, @PathVariable Long postId) {
@@ -93,11 +93,11 @@ public Post getPost(@PathVariable Long userId, @PathVariable Long postId) {
     const endpoints = adapter.parse(source);
 
     expect(endpoints[0].params).toHaveLength(2);
-    expect(endpoints[0].params[0].name).toBe("userId");
-    expect(endpoints[0].params[1].name).toBe("postId");
+    expect(endpoints[0].params[0].name).toBe('userId');
+    expect(endpoints[0].params[1].name).toBe('postId');
   });
 
-  it("should handle Kotlin fun syntax", () => {
+  it('should handle Kotlin fun syntax', () => {
     const source = `
 @GetMapping("/health")
 fun healthCheck(): ResponseEntity<String> {
@@ -107,10 +107,10 @@ fun healthCheck(): ResponseEntity<String> {
     const endpoints = adapter.parse(source);
 
     expect(endpoints).toHaveLength(1);
-    expect(endpoints[0].handler).toBe("healthCheck");
+    expect(endpoints[0].handler).toBe('healthCheck');
   });
 
-  it("should parse @GetMapping with value parameter", () => {
+  it('should parse @GetMapping with value parameter', () => {
     const source = `
 @GetMapping(value = "/status")
 public String getStatus() {
@@ -120,10 +120,10 @@ public String getStatus() {
     const endpoints = adapter.parse(source);
 
     expect(endpoints).toHaveLength(1);
-    expect(endpoints[0].path).toBe("/status");
+    expect(endpoints[0].path).toBe('/status');
   });
 
-  it("should handle no-arg @GetMapping", () => {
+  it('should handle no-arg @GetMapping', () => {
     const source = `
 @GetMapping
 public String index() {
@@ -133,11 +133,11 @@ public String index() {
     const endpoints = adapter.parse(source);
 
     expect(endpoints).toHaveLength(1);
-    expect(endpoints[0].method).toBe("GET");
-    expect(endpoints[0].path).toBe("/");
+    expect(endpoints[0].method).toBe('GET');
+    expect(endpoints[0].path).toBe('/');
   });
 
-  it("should return empty array for non-Spring code", () => {
+  it('should return empty array for non-Spring code', () => {
     const source = `
 public class HelloWorld {
     public static void main(String[] args) {

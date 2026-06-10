@@ -1,9 +1,9 @@
-import { describe, it, expect } from "vitest";
-import { getAvailableFrameworks } from "../../src/adapters/index.js";
-import { Framework } from "../../src/types.js";
+import { describe, it, expect } from 'vitest';
+import { getAvailableFrameworks } from '../../src/adapters/index.js';
+import { Framework } from '../../src/types.js';
 
-describe("getAvailableFrameworks", () => {
-  it("should return all registered frameworks", () => {
+describe('getAvailableFrameworks', () => {
+  it('should return all registered frameworks', () => {
     const frameworks = getAvailableFrameworks();
 
     expect(frameworks).toContain(Framework.Express);
@@ -16,17 +16,17 @@ describe("getAvailableFrameworks", () => {
     expect(frameworks).toContain(Framework.NestJS);
   });
 
-  it("should return exactly 13 built-in frameworks", () => {
+  it('should return exactly 13 built-in frameworks', () => {
     const frameworks = getAvailableFrameworks();
     expect(frameworks).toHaveLength(13);
   });
 
-  it("should include the Hono framework", () => {
+  it('should include the Hono framework', () => {
     const frameworks = getAvailableFrameworks();
     expect(frameworks).toContain(Framework.Hono);
   });
 
-  it("should include all Go frameworks", () => {
+  it('should include all Go frameworks', () => {
     const frameworks = getAvailableFrameworks();
     expect(frameworks).toContain(Framework.Gin);
     expect(frameworks).toContain(Framework.Echo);
@@ -34,7 +34,7 @@ describe("getAvailableFrameworks", () => {
     expect(frameworks).toContain(Framework.NetHttp);
   });
 
-  it("should return an array of Framework enum values", () => {
+  it('should return an array of Framework enum values', () => {
     const frameworks = getAvailableFrameworks();
     const validValues = Object.values(Framework);
 

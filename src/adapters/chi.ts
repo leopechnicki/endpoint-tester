@@ -1,7 +1,15 @@
-import type { Adapter, Endpoint, EndpointParam, HttpMethod } from "../types.js";
-import { Framework } from "../types.js";
+import type { Adapter, Endpoint, EndpointParam, HttpMethod } from '../types.js';
+import { Framework } from '../types.js';
 
-const HTTP_METHODS = ["Get", "Post", "Put", "Delete", "Patch", "Head", "Options"] as const;
+const HTTP_METHODS = [
+  'Get',
+  'Post',
+  'Put',
+  'Delete',
+  'Patch',
+  'Head',
+  'Options',
+] as const;
 
 /**
  * Parses Chi (github.com/go-chi/chi) route definitions from Go source code.
@@ -14,11 +22,11 @@ const HTTP_METHODS = ["Get", "Post", "Put", "Delete", "Patch", "Head", "Options"
  */
 export class ChiAdapter implements Adapter {
   readonly framework = Framework.Chi;
-  readonly fileExtensions = [".go"];
+  readonly fileExtensions = ['.go'];
 
   parse(source: string, filePath?: string): Endpoint[] {
     const endpoints: Endpoint[] = [];
-    const lines = source.split("\n");
+    const lines = source.split('\n');
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -34,12 +42,12 @@ export class ChiAdapter implements Adapter {
   private parseLine(
     line: string,
     lineNumber: number,
-    filePath?: string,
+    filePath?: string
   ): Endpoint | null {
     // Match: identifier.Method("/path", handler) — Chi uses title-case method names
-    const methodsGroup = HTTP_METHODS.join("|");
+    const methodsGroup = HTTP_METHODS.join('|');
     const pattern = new RegExp(
-      `(\\w+)\\.(${methodsGroup})\\s*\\(\\s*"([^"]+)"\\s*,\\s*(\\w+)`,
+      `(\\w+)\\.(${methodsGroup})\\s*\\(\\s*"([^"]+)"\\s*,\\s*(\\w+)`
     );
     const match = line.match(pattern);
     if (!match) return null;
@@ -48,12 +56,12 @@ export class ChiAdapter implements Adapter {
 
     // Normalize: ensure leading slash
     let fullPath = path;
-    if (!fullPath.startsWith("/")) {
-      fullPath = "/" + fullPath;
+    if (!fullPath.startsWith('/')) {
+      fullPath = '/' + fullPath;
     }
 
     // Chi uses {param} syntax — normalize to :param for consistency
-    const normalizedPath = fullPath.replace(/\{(\w+)\}/g, ":$1");
+    const normalizedPath = fullPath.replace(/\{(\w+)\}/g, ':$1');
 
     const params = this.extractParams(fullPath);
 
@@ -76,8 +84,8 @@ export class ChiAdapter implements Adapter {
     while ((match = paramPattern.exec(path)) !== null) {
       params.push({
         name: match[1],
-        location: "path",
-        type: "string",
+        location: 'path',
+        type: 'string',
         required: true,
       });
     }

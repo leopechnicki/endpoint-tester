@@ -1,4 +1,4 @@
-import type { Endpoint, EndpointParam, HttpMethod } from "./types.js";
+import type { Endpoint, EndpointParam, HttpMethod } from './types.js';
 
 /**
  * Options for generating an OpenAPI document from discovered endpoints.
@@ -11,7 +11,7 @@ export interface OpenApiOptions {
   /** `info.version` (default: "1.0.0"). */
   version?: string;
   /** Serialization format (default: "json"). */
-  format?: "json" | "yaml";
+  format?: 'json' | 'yaml';
 }
 
 /** Expected success status per HTTP method — mirrors the test generator. */
@@ -40,13 +40,18 @@ export class OpenApiGenerator {
    */
   generate(endpoints: Endpoint[], options: OpenApiOptions = {}): string {
     const doc = this.buildDocument(endpoints, options);
-    return options.format === "yaml" ? toYaml(doc) : JSON.stringify(doc, null, 2);
+    return options.format === 'yaml'
+      ? toYaml(doc)
+      : JSON.stringify(doc, null, 2);
   }
 
   /**
    * Build the OpenAPI document as a plain object (useful programmatically).
    */
-  buildDocument(endpoints: Endpoint[], options: OpenApiOptions = {}): Record<string, unknown> {
+  buildDocument(
+    endpoints: Endpoint[],
+    options: OpenApiOptions = {}
+  ): Record<string, unknown> {
     const paths: Record<string, Record<string, unknown>> = {};
 
     for (const ep of endpoints) {
@@ -56,10 +61,10 @@ export class OpenApiGenerator {
     }
 
     const doc: Record<string, unknown> = {
-      openapi: "3.1.0",
+      openapi: '3.1.0',
       info: {
-        title: options.title ?? "API",
-        version: options.version ?? "1.0.0",
+        title: options.title ?? 'API',
+        version: options.version ?? '1.0.0',
       },
     };
 
@@ -73,22 +78,33 @@ export class OpenApiGenerator {
 
   private buildOperation(ep: Endpoint): Record<string, unknown> {
     const op: Record<string, unknown> = {
-      operationId: isUsableOperationId(ep.handler) ? ep.handler : defaultOperationId(ep),
+      operationId: isUsableOperationId(ep.handler)
+        ? ep.handler
+        : defaultOperationId(ep),
       summary: `${ep.method} ${ep.path}`,
     };
 
     const parameters = ep.params
-      .filter((p) => p.location === "path" || p.location === "query" || p.location === "header")
+      .filter(
+        (p) =>
+          p.location === 'path' ||
+          p.location === 'query' ||
+          p.location === 'header'
+      )
       .map((p) => buildParameter(p));
     if (parameters.length > 0) {
       op.parameters = parameters;
     }
 
-    if (hasBody(ep) && ep.body?.fields && Object.keys(ep.body.fields).length > 0) {
+    if (
+      hasBody(ep) &&
+      ep.body?.fields &&
+      Object.keys(ep.body.fields).length > 0
+    ) {
       op.requestBody = {
         required: true,
         content: {
-          "application/json": {
+          'application/json': {
             schema: objectSchema(ep.body.fields),
           },
         },
@@ -103,32 +119,32 @@ export class OpenApiGenerator {
 /** Normalize framework-specific path params to OpenAPI `{name}` style. */
 function normalizePath(path: string): string {
   return path
-    .replace(/<(?:[^:>]+:)?([A-Za-z0-9_]+)>/g, "{$1}") // Flask/Django  <int:id> | <id>  (before :id rule)
-    .replace(/:([A-Za-z0-9_]+)/g, "{$1}"); // Express/NestJS  :id
+    .replace(/<(?:[^:>]+:)?([A-Za-z0-9_]+)>/g, '{$1}') // Flask/Django  <int:id> | <id>  (before :id rule)
+    .replace(/:([A-Za-z0-9_]+)/g, '{$1}'); // Express/NestJS  :id
 }
 
 /** A handler name is a usable operationId only if it's a plain identifier. */
 function isUsableOperationId(handler: string | undefined): handler is string {
-  return typeof handler === "string" && /^[A-Za-z_$][\w$]*$/.test(handler);
+  return typeof handler === 'string' && /^[A-Za-z_$][\w$]*$/.test(handler);
 }
 
 function defaultOperationId(ep: Endpoint): string {
   const slug = ep.path
-    .replace(/[/{}<>:]/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .replace(/_+/g, "_");
-  return `${ep.method.toLowerCase()}_${slug || "root"}`;
+    .replace(/[/{}<>:]/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .replace(/_+/g, '_');
+  return `${ep.method.toLowerCase()}_${slug || 'root'}`;
 }
 
 function hasBody(ep: Endpoint): boolean {
-  return ep.method === "POST" || ep.method === "PUT" || ep.method === "PATCH";
+  return ep.method === 'POST' || ep.method === 'PUT' || ep.method === 'PATCH';
 }
 
 function buildParameter(p: EndpointParam): Record<string, unknown> {
   return {
     name: p.name,
     in: p.location,
-    required: p.location === "path" ? true : (p.required ?? false),
+    required: p.location === 'path' ? true : (p.required ?? false),
     schema: typeToSchema(p.type),
   };
 }
@@ -136,13 +152,19 @@ function buildParameter(p: EndpointParam): Record<string, unknown> {
 function buildResponses(ep: Endpoint): Record<string, unknown> {
   const status = METHOD_SUCCESS_STATUS[ep.method] ?? 200;
   const response: Record<string, unknown> = {
-    description: status === 204 ? "No Content" : "Successful response",
+    description: status === 204 ? 'No Content' : 'Successful response',
   };
 
-  if (status !== 204 && ep.response?.fields && Object.keys(ep.response.fields).length > 0) {
+  if (
+    status !== 204 &&
+    ep.response?.fields &&
+    Object.keys(ep.response.fields).length > 0
+  ) {
     const objSchema = objectSchema(ep.response.fields);
-    const schema = ep.response.isArray ? { type: "array", items: objSchema } : objSchema;
-    response.content = { "application/json": { schema } };
+    const schema = ep.response.isArray
+      ? { type: 'array', items: objSchema }
+      : objSchema;
+    response.content = { 'application/json': { schema } };
   }
 
   return { [String(status)]: response };
@@ -153,26 +175,26 @@ function objectSchema(fields: Record<string, string>): JsonSchema {
   for (const [name, type] of Object.entries(fields)) {
     properties[name] = typeToSchema(type);
   }
-  return { type: "object", properties };
+  return { type: 'object', properties };
 }
 
 function typeToSchema(type?: string): JsonSchema {
   switch (type) {
-    case "number":
-    case "float":
-      return { type: "number" };
-    case "integer":
-    case "int":
-      return { type: "integer" };
-    case "boolean":
-    case "bool":
-      return { type: "boolean" };
-    case "array":
-      return { type: "array", items: {} };
-    case "object":
-      return { type: "object" };
+    case 'number':
+    case 'float':
+      return { type: 'number' };
+    case 'integer':
+    case 'int':
+      return { type: 'integer' };
+    case 'boolean':
+    case 'bool':
+      return { type: 'boolean' };
+    case 'array':
+      return { type: 'array', items: {} };
+    case 'object':
+      return { type: 'object' };
     default:
-      return { type: "string" };
+      return { type: 'string' };
   }
 }
 
@@ -191,17 +213,18 @@ export function toYaml(value: unknown): string {
   } else {
     emitObject(lines, value as Record<string, unknown>, 0);
   }
-  return lines.join("\n") + "\n";
+  return lines.join('\n') + '\n';
 }
 
 function isScalar(v: unknown): boolean {
-  return v === null || typeof v !== "object";
+  return v === null || typeof v !== 'object';
 }
 
 function scalar(v: unknown): string {
-  if (v === null || v === undefined) return "null";
-  if (typeof v === "boolean") return v ? "true" : "false";
-  if (typeof v === "number") return Number.isFinite(v) ? String(v) : JSON.stringify(String(v));
+  if (v === null || v === undefined) return 'null';
+  if (typeof v === 'boolean') return v ? 'true' : 'false';
+  if (typeof v === 'number')
+    return Number.isFinite(v) ? String(v) : JSON.stringify(String(v));
   return JSON.stringify(String(v));
 }
 
@@ -211,8 +234,12 @@ function yamlKey(key: string): string {
   return /^[A-Za-z_][\w.-]*$/.test(key) ? key : JSON.stringify(key);
 }
 
-function emitObject(lines: string[], obj: Record<string, unknown>, indent: number): void {
-  const pad = "  ".repeat(indent);
+function emitObject(
+  lines: string[],
+  obj: Record<string, unknown>,
+  indent: number
+): void {
+  const pad = '  '.repeat(indent);
   for (const [k, v] of Object.entries(obj)) {
     if (v === undefined) continue;
     const key = yamlKey(k);
@@ -238,7 +265,7 @@ function emitObject(lines: string[], obj: Record<string, unknown>, indent: numbe
 }
 
 function emitArray(lines: string[], arr: unknown[], indent: number): void {
-  const pad = "  ".repeat(indent);
+  const pad = '  '.repeat(indent);
   for (const item of arr) {
     if (isScalar(item)) {
       lines.push(`${pad}- ${scalar(item)}`);

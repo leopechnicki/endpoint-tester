@@ -1,11 +1,11 @@
-import { describe, it, expect } from "vitest";
-import { FastAPIAdapter } from "../../src/adapters/fastapi.js";
+import { describe, it, expect } from 'vitest';
+import { FastAPIAdapter } from '../../src/adapters/fastapi.js';
 
-describe("FastAPIAdapter — edge cases", () => {
+describe('FastAPIAdapter — edge cases', () => {
   const adapter = new FastAPIAdapter();
 
-  describe("multi-line decorators", () => {
-    it("should parse decorator with response_model on next line", () => {
+  describe('multi-line decorators', () => {
+    it('should parse decorator with response_model on next line', () => {
       const source = `
 @app.get(
     "/users",
@@ -17,12 +17,12 @@ async def get_users():
       const endpoints = adapter.parse(source);
 
       expect(endpoints).toHaveLength(1);
-      expect(endpoints[0].method).toBe("GET");
-      expect(endpoints[0].path).toBe("/users");
-      expect(endpoints[0].handler).toBe("get_users");
+      expect(endpoints[0].method).toBe('GET');
+      expect(endpoints[0].path).toBe('/users');
+      expect(endpoints[0].handler).toBe('get_users');
     });
 
-    it("should parse decorator with many kwargs", () => {
+    it('should parse decorator with many kwargs', () => {
       const source = `
 @router.post(
     "/items",
@@ -37,12 +37,12 @@ async def create_item(item: ItemCreate):
       const endpoints = adapter.parse(source);
 
       expect(endpoints).toHaveLength(1);
-      expect(endpoints[0].method).toBe("POST");
-      expect(endpoints[0].path).toBe("/items");
-      expect(endpoints[0].handler).toBe("create_item");
+      expect(endpoints[0].method).toBe('POST');
+      expect(endpoints[0].path).toBe('/items');
+      expect(endpoints[0].handler).toBe('create_item');
     });
 
-    it("should parse multi-line decorator with path params", () => {
+    it('should parse multi-line decorator with path params', () => {
       const source = `
 @app.get(
     "/users/{user_id}/posts/{post_id}",
@@ -54,13 +54,13 @@ async def get_user_post(user_id: int, post_id: int):
       const endpoints = adapter.parse(source);
 
       expect(endpoints).toHaveLength(1);
-      expect(endpoints[0].path).toBe("/users/:user_id/posts/:post_id");
+      expect(endpoints[0].path).toBe('/users/:user_id/posts/:post_id');
       expect(endpoints[0].params).toHaveLength(2);
     });
   });
 
-  describe("complex real-world patterns", () => {
-    it("should handle multiple routers with different prefixes", () => {
+  describe('complex real-world patterns', () => {
+    it('should handle multiple routers with different prefixes', () => {
       const source = `
 user_router = APIRouter(prefix="/api/v1/users")
 post_router = APIRouter(prefix="/api/v1/posts")
@@ -80,22 +80,22 @@ async def list_posts():
       const endpoints = adapter.parse(source);
 
       expect(endpoints).toHaveLength(3);
-      expect(endpoints[0].path).toBe("/api/v1/users/");
-      expect(endpoints[1].path).toBe("/api/v1/users/:user_id");
-      expect(endpoints[2].path).toBe("/api/v1/posts/");
+      expect(endpoints[0].path).toBe('/api/v1/users/');
+      expect(endpoints[1].path).toBe('/api/v1/users/:user_id');
+      expect(endpoints[2].path).toBe('/api/v1/posts/');
     });
 
-    it("should handle sync def functions", () => {
+    it('should handle sync def functions', () => {
       const source = `
 @app.get("/sync-endpoint")
 def sync_handler():
     return {"sync": True}
 `;
       const endpoints = adapter.parse(source);
-      expect(endpoints[0].handler).toBe("sync_handler");
+      expect(endpoints[0].handler).toBe('sync_handler');
     });
 
-    it("should handle multiple decorators on same function", () => {
+    it('should handle multiple decorators on same function', () => {
       const source = `
 @app.get("/health")
 async def health():
@@ -109,7 +109,7 @@ async def readiness():
       expect(endpoints).toHaveLength(2);
     });
 
-    it("should handle all HTTP methods", () => {
+    it('should handle all HTTP methods', () => {
       const source = `
 @app.get("/r")
 async def h1(): pass
@@ -128,7 +128,13 @@ async def h5(): pass
 `;
       const endpoints = adapter.parse(source);
       expect(endpoints).toHaveLength(5);
-      expect(endpoints.map((e) => e.method)).toEqual(["GET", "POST", "PUT", "DELETE", "PATCH"]);
+      expect(endpoints.map((e) => e.method)).toEqual([
+        'GET',
+        'POST',
+        'PUT',
+        'DELETE',
+        'PATCH',
+      ]);
     });
   });
 });

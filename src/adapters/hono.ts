@@ -1,7 +1,22 @@
-import type { Adapter, Endpoint, EndpointParam, EndpointResponse, HttpMethod } from "../types.js";
-import { Framework } from "../types.js";
+import type {
+  Adapter,
+  Endpoint,
+  EndpointParam,
+  EndpointResponse,
+  HttpMethod,
+} from '../types.js';
+import { Framework } from '../types.js';
 
-const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options", "all"] as const;
+const HTTP_METHODS = [
+  'get',
+  'post',
+  'put',
+  'delete',
+  'patch',
+  'head',
+  'options',
+  'all',
+] as const;
 
 /**
  * Parses Hono route definitions from source code.
@@ -18,11 +33,11 @@ const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"
  */
 export class HonoAdapter implements Adapter {
   readonly framework = Framework.Hono;
-  readonly fileExtensions = [".ts", ".js", ".mjs", ".cjs"];
+  readonly fileExtensions = ['.ts', '.js', '.mjs', '.cjs'];
 
   parse(source: string, filePath?: string): Endpoint[] {
     const endpoints: Endpoint[] = [];
-    const lines = source.split("\n");
+    const lines = source.split('\n');
 
     // Detect route groups mounted via app.route('/prefix', subApp)
     // and middleware mounts via app.use('/prefix', subApp)
@@ -49,12 +64,12 @@ export class HonoAdapter implements Adapter {
     line: string,
     lineNumber: number,
     filePath?: string,
-    prefixes?: Map<string, string>,
+    prefixes?: Map<string, string>
   ): Endpoint[] | null {
     // Match: identifier.method('/path', ...)
     const pattern = new RegExp(
-      `(\\w+)\\.(${HTTP_METHODS.join("|")})\\s*\\(\\s*['"\`]([^'"\`]+)['"\`]`,
-      "i",
+      `(\\w+)\\.(${HTTP_METHODS.join('|')})\\s*\\(\\s*['"\`]([^'"\`]+)['"\`]`,
+      'i'
     );
     const match = line.match(pattern);
     if (!match) return null;
@@ -63,20 +78,29 @@ export class HonoAdapter implements Adapter {
 
     // Skip app.route() and app.use() calls (those are prefix mounts, not route definitions)
     // They are handled by detectRoutePrefixes
-    if (method.toLowerCase() === "route" || method.toLowerCase() === "use") return null;
+    if (method.toLowerCase() === 'route' || method.toLowerCase() === 'use')
+      return null;
 
     let fullPath = path;
     if (prefixes && identifier && prefixes.has(identifier)) {
       const prefix = prefixes.get(identifier)!;
-      fullPath = prefix + (path.startsWith("/") ? path : "/" + path);
+      fullPath = prefix + (path.startsWith('/') ? path : '/' + path);
     }
-    if (!fullPath.startsWith("/")) fullPath = "/" + fullPath;
+    if (!fullPath.startsWith('/')) fullPath = '/' + fullPath;
 
     const handler = this.extractHandler(line);
     const params = this.extractParams(fullPath);
 
-    if (method.toLowerCase() === "all") {
-      const allMethods: HttpMethod[] = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"];
+    if (method.toLowerCase() === 'all') {
+      const allMethods: HttpMethod[] = [
+        'GET',
+        'POST',
+        'PUT',
+        'DELETE',
+        'PATCH',
+        'HEAD',
+        'OPTIONS',
+      ];
       return allMethods.map((m) => ({
         method: m,
         path: fullPath,
@@ -87,21 +111,23 @@ export class HonoAdapter implements Adapter {
       }));
     }
 
-    return [{
-      method: method.toUpperCase() as HttpMethod,
-      path: fullPath,
-      handler,
-      params,
-      file: filePath,
-      line: lineNumber,
-    }];
+    return [
+      {
+        method: method.toUpperCase() as HttpMethod,
+        path: fullPath,
+        handler,
+        params,
+        file: filePath,
+        line: lineNumber,
+      },
+    ];
   }
 
   private extractHandler(line: string): string {
     const match = line.match(/,\s*(\w+)\s*\)?\s*;?\s*$/);
     if (match) return match[1];
-    if (line.includes("=>") || line.includes("function")) return "<anonymous>";
-    return "<unknown>";
+    if (line.includes('=>') || line.includes('function')) return '<anonymous>';
+    return '<unknown>';
   }
 
   private extractParams(path: string): EndpointParam[] {
@@ -110,7 +136,12 @@ export class HonoAdapter implements Adapter {
     const paramPattern = /:(\w+)/g;
     let match: RegExpExecArray | null;
     while ((match = paramPattern.exec(path)) !== null) {
-      params.push({ name: match[1], location: "path", type: "string", required: true });
+      params.push({
+        name: match[1],
+        location: 'path',
+        type: 'string',
+        required: true,
+      });
     }
     return params;
   }
@@ -126,7 +157,8 @@ export class HonoAdapter implements Adapter {
     const prefixes = new Map<string, string>();
 
     // app.route('/prefix', subApp) — Hono route grouping
-    const routePattern = /(\w+)\.route\s*\(\s*['"`]([^'"`]+)['"`]\s*,\s*(\w+)\s*\)/g;
+    const routePattern =
+      /(\w+)\.route\s*\(\s*['"`]([^'"`]+)['"`]\s*,\s*(\w+)\s*\)/g;
     let match: RegExpExecArray | null;
     while ((match = routePattern.exec(source)) !== null) {
       // match[3] is the sub-app identifier, match[2] is the prefix
@@ -134,7 +166,8 @@ export class HonoAdapter implements Adapter {
     }
 
     // app.use('/prefix', subApp) — middleware mount
-    const usePattern = /(\w+)\.use\s*\(\s*['"`]([^'"`]+)['"`]\s*,\s*(\w+)\s*\)/g;
+    const usePattern =
+      /(\w+)\.use\s*\(\s*['"`]([^'"`]+)['"`]\s*,\s*(\w+)\s*\)/g;
     while ((match = usePattern.exec(source)) !== null) {
       prefixes.set(match[3], match[2]);
     }
@@ -146,21 +179,27 @@ export class HonoAdapter implements Adapter {
     for (const ep of endpoints) {
       if (!ep.line) continue;
 
-      const lines = source.split("\n");
+      const lines = source.split('\n');
       const startLine = ep.line - 1;
       const endLine = Math.min(startLine + 50, lines.length);
-      const block = lines.slice(startLine, endLine).join("\n");
+      const block = lines.slice(startLine, endLine).join('\n');
 
-      if (ep.method === "POST" || ep.method === "PUT" || ep.method === "PATCH") {
+      if (
+        ep.method === 'POST' ||
+        ep.method === 'PUT' ||
+        ep.method === 'PATCH'
+      ) {
         const fields = this.inferBodyFields(block);
         if (Object.keys(fields).length > 0) {
-          ep.body = { type: "object", fields };
+          ep.body = { type: 'object', fields };
         }
       }
 
       const queryParams = this.inferQueryParams(block);
       for (const qp of queryParams) {
-        if (!ep.params.some(p => p.name === qp.name && p.location === "query")) {
+        if (
+          !ep.params.some((p) => p.name === qp.name && p.location === 'query')
+        ) {
           ep.params.push(qp);
         }
       }
@@ -179,14 +218,17 @@ export class HonoAdapter implements Adapter {
     // or: c.req.json() usage followed by .field
     const dotPattern = /(?:body|data|payload)\.(\w+)/g;
     while ((match = dotPattern.exec(block)) !== null) {
-      fields[match[1]] = "string";
+      fields[match[1]] = 'string';
     }
 
     // Destructuring from c.req.json()
-    const destructPattern = /(?:const|let|var)\s*\{([^}]+)\}\s*=\s*(?:await\s+)?c\.req\.json\s*\(\s*\)/g;
+    const destructPattern =
+      /(?:const|let|var)\s*\{([^}]+)\}\s*=\s*(?:await\s+)?c\.req\.json\s*\(\s*\)/g;
     while ((match = destructPattern.exec(block)) !== null) {
-      for (const f of match[1].split(",").map(s => s.trim().split(":")[0].split("=")[0].trim())) {
-        if (f && /^\w+$/.test(f)) fields[f] = "string";
+      for (const f of match[1]
+        .split(',')
+        .map((s) => s.trim().split(':')[0].split('=')[0].trim())) {
+        if (f && /^\w+$/.test(f)) fields[f] = 'string';
       }
     }
 
@@ -203,7 +245,7 @@ export class HonoAdapter implements Adapter {
     while ((match = queryCallPattern.exec(block)) !== null) {
       if (!seen.has(match[1])) {
         seen.add(match[1]);
-        params.push({ name: match[1], location: "query", type: "string" });
+        params.push({ name: match[1], location: 'query', type: 'string' });
       }
     }
 
@@ -212,7 +254,7 @@ export class HonoAdapter implements Adapter {
     while ((match = queriesCallPattern.exec(block)) !== null) {
       if (!seen.has(match[1])) {
         seen.add(match[1]);
-        params.push({ name: match[1], location: "query", type: "string" });
+        params.push({ name: match[1], location: 'query', type: 'string' });
       }
     }
 
@@ -229,7 +271,7 @@ export class HonoAdapter implements Adapter {
     const keyPattern = /(\w+)\s*:/g;
     let keyMatch: RegExpExecArray | null;
     while ((keyMatch = keyPattern.exec(match[1])) !== null) {
-      fields[keyMatch[1]] = "string";
+      fields[keyMatch[1]] = 'string';
     }
 
     if (Object.keys(fields).length === 0) return null;

@@ -1,11 +1,11 @@
-import { describe, it, expect } from "vitest";
-import { FlaskAdapter } from "../../src/adapters/flask.js";
+import { describe, it, expect } from 'vitest';
+import { FlaskAdapter } from '../../src/adapters/flask.js';
 
-describe("FlaskAdapter — edge cases", () => {
+describe('FlaskAdapter — edge cases', () => {
   const adapter = new FlaskAdapter();
 
-  describe("blueprint prefix handling", () => {
-    it("should handle multiple blueprints with different prefixes", () => {
+  describe('blueprint prefix handling', () => {
+    it('should handle multiple blueprints with different prefixes', () => {
       const source = `
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 api_bp = Blueprint('api', __name__, url_prefix='/api/v1')
@@ -25,12 +25,12 @@ def list_users():
       const endpoints = adapter.parse(source);
 
       expect(endpoints).toHaveLength(3);
-      expect(endpoints[0].path).toBe("/auth/login");
-      expect(endpoints[1].path).toBe("/auth/register");
-      expect(endpoints[2].path).toBe("/api/v1/users");
+      expect(endpoints[0].path).toBe('/auth/login');
+      expect(endpoints[1].path).toBe('/auth/register');
+      expect(endpoints[2].path).toBe('/api/v1/users');
     });
 
-    it("should handle blueprint with route() and methods", () => {
+    it('should handle blueprint with route() and methods', () => {
       const source = `
 bp = Blueprint('main', __name__, url_prefix='/api')
 
@@ -41,13 +41,13 @@ def data_handler():
       const endpoints = adapter.parse(source);
 
       expect(endpoints).toHaveLength(3);
-      expect(endpoints.map((e) => e.method)).toEqual(["GET", "POST", "PUT"]);
-      expect(endpoints.every((e) => e.path === "/api/data")).toBe(true);
+      expect(endpoints.map((e) => e.method)).toEqual(['GET', 'POST', 'PUT']);
+      expect(endpoints.every((e) => e.path === '/api/data')).toBe(true);
     });
   });
 
-  describe("complex path parameters", () => {
-    it("should handle multiple typed parameters", () => {
+  describe('complex path parameters', () => {
+    it('should handle multiple typed parameters', () => {
       const source = `
 @app.get('/orgs/<int:org_id>/teams/<int:team_id>/members/<uuid:member_id>')
 def get_member(org_id, team_id, member_id):
@@ -58,20 +58,20 @@ def get_member(org_id, team_id, member_id):
       expect(endpoints).toHaveLength(1);
       expect(endpoints[0].params).toHaveLength(3);
       expect(endpoints[0].params[0]).toEqual({
-        name: "org_id",
-        location: "path",
-        type: "number",
+        name: 'org_id',
+        location: 'path',
+        type: 'number',
         required: true,
       });
       expect(endpoints[0].params[2]).toEqual({
-        name: "member_id",
-        location: "path",
-        type: "string",
+        name: 'member_id',
+        location: 'path',
+        type: 'string',
         required: true,
       });
     });
 
-    it("should handle float type parameter", () => {
+    it('should handle float type parameter', () => {
       const source = `
 @app.get('/location/<float:lat>/<float:lng>')
 def get_location(lat, lng):
@@ -80,11 +80,11 @@ def get_location(lat, lng):
       const endpoints = adapter.parse(source);
 
       expect(endpoints[0].params).toHaveLength(2);
-      expect(endpoints[0].params[0].type).toBe("number");
-      expect(endpoints[0].params[1].type).toBe("number");
+      expect(endpoints[0].params[0].type).toBe('number');
+      expect(endpoints[0].params[1].type).toBe('number');
     });
 
-    it("should handle path type parameter", () => {
+    it('should handle path type parameter', () => {
       const source = `
 @app.get('/files/<path:filepath>')
 def get_file(filepath):
@@ -92,11 +92,11 @@ def get_file(filepath):
 `;
       const endpoints = adapter.parse(source);
 
-      expect(endpoints[0].params[0].name).toBe("filepath");
-      expect(endpoints[0].params[0].type).toBe("string");
+      expect(endpoints[0].params[0].name).toBe('filepath');
+      expect(endpoints[0].params[0].type).toBe('string');
     });
 
-    it("should handle mixed typed and untyped params", () => {
+    it('should handle mixed typed and untyped params', () => {
       const source = `
 @app.get('/users/<int:user_id>/posts/<slug>')
 def get_post(user_id, slug):
@@ -105,13 +105,13 @@ def get_post(user_id, slug):
       const endpoints = adapter.parse(source);
 
       expect(endpoints[0].params).toHaveLength(2);
-      expect(endpoints[0].params[0].type).toBe("number");
-      expect(endpoints[0].params[1].type).toBe("string");
+      expect(endpoints[0].params[0].type).toBe('number');
+      expect(endpoints[0].params[1].type).toBe('string');
     });
   });
 
-  describe("all HTTP methods", () => {
-    it("should handle all shorthand methods", () => {
+  describe('all HTTP methods', () => {
+    it('should handle all shorthand methods', () => {
       const source = `
 @app.get('/r')
 def h1(): pass
@@ -131,12 +131,18 @@ def h5(): pass
       const endpoints = adapter.parse(source);
 
       expect(endpoints).toHaveLength(5);
-      expect(endpoints.map((e) => e.method)).toEqual(["GET", "POST", "PUT", "DELETE", "PATCH"]);
+      expect(endpoints.map((e) => e.method)).toEqual([
+        'GET',
+        'POST',
+        'PUT',
+        'DELETE',
+        'PATCH',
+      ]);
     });
   });
 
-  describe("handler detection", () => {
-    it("should return <unknown> if no def follows decorator", () => {
+  describe('handler detection', () => {
+    it('should return <unknown> if no def follows decorator', () => {
       const source = `
 @app.get('/orphan')
 # this has no function def
@@ -144,22 +150,22 @@ def h5(): pass
       const endpoints = adapter.parse(source);
 
       expect(endpoints).toHaveLength(1);
-      expect(endpoints[0].handler).toBe("<unknown>");
+      expect(endpoints[0].handler).toBe('<unknown>');
     });
 
-    it("should handle async def handler", () => {
+    it('should handle async def handler', () => {
       const source = `
 @app.get('/async-route')
 async def async_handler():
     return "ok"
 `;
       const endpoints = adapter.parse(source);
-      expect(endpoints[0].handler).toBe("async_handler");
+      expect(endpoints[0].handler).toBe('async_handler');
     });
   });
 
-  describe("route method with double-quoted methods list", () => {
-    it("should parse methods with double quotes", () => {
+  describe('route method with double-quoted methods list', () => {
+    it('should parse methods with double quotes', () => {
       const source = `
 @app.route("/items", methods=["POST", "PUT"])
 def items():
@@ -168,18 +174,18 @@ def items():
       const endpoints = adapter.parse(source);
 
       expect(endpoints).toHaveLength(2);
-      expect(endpoints[0].method).toBe("POST");
-      expect(endpoints[1].method).toBe("PUT");
+      expect(endpoints[0].method).toBe('POST');
+      expect(endpoints[1].method).toBe('PUT');
     });
   });
 
-  describe("empty and non-Flask source", () => {
-    it("should return empty for completely empty source", () => {
-      const endpoints = adapter.parse("");
+  describe('empty and non-Flask source', () => {
+    it('should return empty for completely empty source', () => {
+      const endpoints = adapter.parse('');
       expect(endpoints).toHaveLength(0);
     });
 
-    it("should return empty for regular Python code", () => {
+    it('should return empty for regular Python code', () => {
       const source = `
 class MyService:
     def process(self):
