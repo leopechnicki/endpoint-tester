@@ -1,6 +1,6 @@
-import { readFileSync, existsSync } from "node:fs";
-import { resolve, join } from "node:path";
-import type { Framework, SupportedFormat } from "./types.js";
+import { readFileSync, existsSync } from 'node:fs';
+import { resolve, join } from 'node:path';
+import type { Framework, SupportedFormat } from './types.js';
 
 /**
  * Shape of the .endpointtesterrc config file.
@@ -28,8 +28,8 @@ export interface EndpointTesterConfig {
  * The first one that exists wins.
  */
 const CONFIG_FILE_NAMES = [
-  ".endpointtesterrc",
-  ".endpointtesterrc.json",
+  '.endpointtesterrc',
+  '.endpointtesterrc.json',
 ] as const;
 
 /**
@@ -49,10 +49,10 @@ export function loadConfig(directory?: string): EndpointTesterConfig | null {
 
     let raw: string;
     try {
-      raw = readFileSync(filePath, "utf-8");
+      raw = readFileSync(filePath, 'utf-8');
     } catch (err) {
       throw new Error(
-        `endpoint-tester: could not read config file ${filePath}: ${(err as Error).message}`,
+        `endpoint-tester: could not read config file ${filePath}: ${(err as Error).message}`
       );
     }
 
@@ -61,13 +61,17 @@ export function loadConfig(directory?: string): EndpointTesterConfig | null {
       parsed = JSON.parse(raw);
     } catch (err) {
       throw new Error(
-        `endpoint-tester: config file ${filePath} is not valid JSON: ${(err as Error).message}`,
+        `endpoint-tester: config file ${filePath} is not valid JSON: ${(err as Error).message}`
       );
     }
 
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      Array.isArray(parsed)
+    ) {
       throw new Error(
-        `endpoint-tester: config file ${filePath} must be a JSON object, got ${Array.isArray(parsed) ? "array" : typeof parsed}`,
+        `endpoint-tester: config file ${filePath} must be a JSON object, got ${Array.isArray(parsed) ? 'array' : typeof parsed}`
       );
     }
 
@@ -84,50 +88,68 @@ export function loadConfig(directory?: string): EndpointTesterConfig | null {
  */
 function validateConfig(
   raw: Record<string, unknown>,
-  filePath: string,
+  filePath: string
 ): EndpointTesterConfig {
   const result: EndpointTesterConfig = {};
 
-  if ("framework" in raw) {
-    if (typeof raw["framework"] !== "string") {
-      throw new Error(`endpoint-tester: ${filePath}: "framework" must be a string`);
+  if ('framework' in raw) {
+    if (typeof raw['framework'] !== 'string') {
+      throw new Error(
+        `endpoint-tester: ${filePath}: "framework" must be a string`
+      );
     }
-    result.framework = raw["framework"] as Framework;
+    result.framework = raw['framework'] as Framework;
   }
 
-  if ("outputDir" in raw) {
-    if (typeof raw["outputDir"] !== "string") {
-      throw new Error(`endpoint-tester: ${filePath}: "outputDir" must be a string`);
+  if ('outputDir' in raw) {
+    if (typeof raw['outputDir'] !== 'string') {
+      throw new Error(
+        `endpoint-tester: ${filePath}: "outputDir" must be a string`
+      );
     }
-    result.outputDir = raw["outputDir"];
+    result.outputDir = raw['outputDir'];
   }
 
-  if ("testRunner" in raw) {
-    if (typeof raw["testRunner"] !== "string") {
-      throw new Error(`endpoint-tester: ${filePath}: "testRunner" must be a string`);
+  if ('testRunner' in raw) {
+    if (typeof raw['testRunner'] !== 'string') {
+      throw new Error(
+        `endpoint-tester: ${filePath}: "testRunner" must be a string`
+      );
     }
-    result.testRunner = raw["testRunner"] as SupportedFormat;
+    result.testRunner = raw['testRunner'] as SupportedFormat;
   }
 
-  if ("include" in raw) {
-    if (!Array.isArray(raw["include"]) || !raw["include"].every((v) => typeof v === "string")) {
-      throw new Error(`endpoint-tester: ${filePath}: "include" must be an array of strings`);
+  if ('include' in raw) {
+    if (
+      !Array.isArray(raw['include']) ||
+      !raw['include'].every((v) => typeof v === 'string')
+    ) {
+      throw new Error(
+        `endpoint-tester: ${filePath}: "include" must be an array of strings`
+      );
     }
-    result.include = raw["include"] as string[];
+    result.include = raw['include'] as string[];
   }
 
-  if ("exclude" in raw) {
-    if (!Array.isArray(raw["exclude"]) || !raw["exclude"].every((v) => typeof v === "string")) {
-      throw new Error(`endpoint-tester: ${filePath}: "exclude" must be an array of strings`);
+  if ('exclude' in raw) {
+    if (
+      !Array.isArray(raw['exclude']) ||
+      !raw['exclude'].every((v) => typeof v === 'string')
+    ) {
+      throw new Error(
+        `endpoint-tester: ${filePath}: "exclude" must be an array of strings`
+      );
     }
-    result.exclude = raw["exclude"] as string[];
+    result.exclude = raw['exclude'] as string[];
   }
 
-  if ("baseUrl" in raw) {
-    if (typeof raw["baseUrl"] !== "string") {
-      throw new Error(`endpoint-tester: ${filePath}: "baseUrl" must be a string`);
+  if ('baseUrl' in raw) {
+    if (typeof raw['baseUrl'] !== 'string') {
+      throw new Error(
+        `endpoint-tester: ${filePath}: "baseUrl" must be a string`
+      );
     }
-    result.baseUrl = raw["baseUrl"];
+    result.baseUrl = raw['baseUrl'];
   }
 
   return result;
