@@ -16,6 +16,18 @@
 
 ---
 
+## Demo
+
+<!-- Screenshot / GIF placeholder -->
+<!-- To add a demo GIF: record your terminal running the Quick Demo below,
+     upload to the repo (docs/demo.gif) and replace this comment with:
+     ![endpoint-tester demo](docs/demo.gif) -->
+
+> A GIF showing a full scan + generate cycle will appear here. In the meantime,
+> see the [Quick Demo](#quick-demo) section below for the exact terminal output.
+
+---
+
 ## The problem
 
 Every API project needs endpoint tests. Writing them is tedious, repetitive, and error-prone: you copy-paste test files, update paths, remember which params go where, and hope you didn't miss a route. When the codebase changes, the tests fall behind.
@@ -249,34 +261,69 @@ Feed this to Swagger UI, Schemathesis, or `openapi-generator` — no manual anno
 
 ## Install
 
+**Requirements:** Node.js >= 20
+
 ```bash
+# Install globally (recommended)
 npm install -g endpoint-tester
+
+# Or use without installing (always pulls the latest version)
+npx endpoint-tester scan ./src
 ```
 
-Or use without installing:
+Verify the installation:
 
 ```bash
-npx endpoint-tester scan ./src
+endpoint-tester --version
+# 0.3.0
 ```
 
 ## Quick start
 
+Point endpoint-tester at your source directory — it auto-detects the framework.
+
 ```bash
-# Scan for endpoints (auto-detects framework)
+# 1. Scan for endpoints (auto-detects framework from package.json / requirements.txt / pom.xml)
 endpoint-tester scan ./src
 
-# Scan with explicit framework
-endpoint-tester scan ./src --framework fastapi
-
-# Generate test suite
+# 2. Generate a test suite
 endpoint-tester generate ./src --format vitest --output ./tests/api.test.ts
 
-# Generate with custom base URL
-endpoint-tester generate ./src --format jest --base-url http://localhost:8080
+# 3. Run the generated tests (against your running server)
+npx vitest run ./tests/api.test.ts
+```
 
-# Generate an OpenAPI 3.1 spec (JSON, or YAML by output extension)
-endpoint-tester generate ./src --format openapi --output openapi.json
+**Framework-specific examples:**
+
+```bash
+# Express.js — auto-detected from package.json
+endpoint-tester scan ./src
+
+# FastAPI — auto-detected from requirements.txt
+endpoint-tester scan ./app
+
+# Force a specific framework
+endpoint-tester scan ./src --framework nestjs
+endpoint-tester scan ./src --framework spring
+
+# Generate a Pytest suite for FastAPI
+endpoint-tester generate ./app --framework fastapi --format pytest --output ./tests/test_api.py
+
+# Generate an OpenAPI 3.1 spec (no server required)
 endpoint-tester generate ./src --format openapi --output openapi.yaml
+```
+
+**Working examples you can clone and run right now:**
+
+```bash
+# Express.js example
+examples/express-sample/    # see examples/express-sample/README.md
+
+# FastAPI example
+examples/fastapi-sample/    # see examples/fastapi-sample/README.md
+
+# Go examples (Gin, Echo, Chi, net/http)
+examples/go-sample/         # see examples/go-sample/README.md
 ```
 
 ### Example output
@@ -464,13 +511,39 @@ registerAdapter(new HonoAdapter());
 
 ## Comparison with alternatives
 
+### vs. Schemathesis, Bruno, and Optic
+
+The key distinction: most tools go **spec → tests**. endpoint-tester goes **source code → spec**.
+
+| | endpoint-tester | Schemathesis | Bruno | Optic |
+|---|---|---|---|---|
+| **Starting point** | Source code | OpenAPI/GraphQL spec | Existing API collection | OpenAPI spec or traffic |
+| **Spec required?** | No — generates it | Yes | Yes (or import) | Yes |
+| **Test framework** | Vitest, Jest, Pytest, Go | pytest (property-based) | Bruno runner | Optic CI |
+| **Approach** | Static analysis of routes | Fuzzing + property tests | Manual collection + run | Diff / contract testing |
+| **Framework-aware** | 13 built-in adapters | Spec-agnostic | Spec-agnostic | Spec-agnostic |
+| **Setup time** | Zero — point at source dir | Write/import spec first | Import or write collection | Import spec or capture traffic |
+| **CI guard** | Built-in (`ci` command) | Via pytest integration | Bruno CLI | Optic CI action |
+| **Watch mode** | Built-in (`--watch`) | No | No | No |
+| **OpenAPI export** | Yes (3.1, JSON + YAML) | Consumes, not generates | Consumes | Generates from traffic |
+| **Price** | Free / open-source | Free / open-source | Free / open-source | Free tier + paid |
+| **Language** | TypeScript (Node.js) | Python | Any (CLI) | TypeScript |
+
+**When to use each:**
+- **endpoint-tester** — You have source code but no spec yet. Start here: get tests and a spec in one step.
+- **Schemathesis** — You have a spec and want property-based fuzzing to find edge cases.
+- **Bruno** — You prefer a Git-friendly Postman replacement for manual API exploration.
+- **Optic** — You want to diff two spec versions or detect breaking changes in CI.
+
+### vs. writing tests manually or Postman
+
 | | endpoint-tester | Writing tests manually | Postman export |
 |---|---|---|---|
 | **Setup time** | 0 (auto-detects) | N/A | Import collection |
 | **Keeps up with code** | Re-scan anytime | Manual updates | Re-export |
 | **Boundary tests** | Automatic | Write each one | Manual |
 | **Auth tests** | Automatic | Write each one | Configure per request |
-| **Multi-framework** | 8 built-in | N/A | Framework-agnostic |
+| **Multi-framework** | 13 built-in | N/A | Framework-agnostic |
 | **CI friendly** | CLI output | Already in repo | Needs Newman |
 
 ## Development

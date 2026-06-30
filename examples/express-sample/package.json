@@ -1,0 +1,23 @@
+{
+  "name": "express-sample",
+  "version": "1.0.0",
+  "description": "Express.js example for endpoint-tester",
+  "type": "module",
+  "scripts": {
+    "start": "node --loader ts-node/esm src/app.ts",
+    "scan": "npx endpoint-tester scan ./src --framework express",
+    "generate:vitest": "npx endpoint-tester generate ./src --framework express --format vitest --output ./tests/api.test.ts",
+    "generate:openapi": "npx endpoint-tester generate ./src --framework express --format openapi --output ./openapi.yaml",
+    "test": "npx vitest run tests/api.test.ts"
+  },
+  "dependencies": {
+    "express": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.0",
+    "@types/node": "^22.0.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.5.0",
+    "vitest": "^4.0.0"
+  }
+}
