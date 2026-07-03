@@ -82,6 +82,25 @@ export class TestGenerator {
     return METHOD_STATUS_MAP[method] ?? 200;
   }
 
+  /**
+   * Return the expected success status for an endpoint.
+   *
+   * Prefers the scanner-inferred `response.status` (e.g. a Flask handler that
+   * explicitly returns `(payload, 201)`) so generated assertions match reality.
+   * Falls back to the HTTP-method default (POST → 201, DELETE → 204, else 200)
+   * when the scanner could not infer a specific status.
+   *
+   * Fixes CONSOLIDATED#6 (2026-07-02 validation audit): pytest generator was
+   * hard-coding `assert response.status_code == 200` even when the handler
+   * clearly returned 201/204.
+   */
+  getEndpointStatus(ep: Endpoint): number {
+    if (typeof ep.response?.status === 'number') {
+      return ep.response.status;
+    }
+    return this.getExpectedStatus(ep.method);
+  }
+
   private generateVitest(
     endpoints: Endpoint[],
     baseUrl = 'http://localhost:3000'
@@ -197,7 +216,7 @@ export class TestGenerator {
     for (const ep of endpoints) {
       const testPath = this.buildTestPath(ep);
       const funcName = this.toPythonFuncName(ep);
-      const expectedStatus = this.getExpectedStatus(ep.method);
+      const expectedStatus = this.getEndpointStatus(ep);
       const safeMethod = escapeForStringLiteral(ep.method);
       const safePath = escapeForStringLiteral(ep.path);
       const safeTestPath = escapeForStringLiteral(testPath);
@@ -472,7 +491,7 @@ export class TestGenerator {
     for (const ep of endpoints) {
       const testPath = this.buildGoTestPath(ep);
       const funcName = this.toGoFuncName(ep);
-      const expectedStatus = this.getExpectedStatus(ep.method);
+      const expectedStatus = this.getEndpointStatus(ep);
       const httpMethod = `http.Method${this.toGoMethodName(ep.method)}`;
       const hasBody = this.hasBody(ep);
 
@@ -643,7 +662,7 @@ export class TestGenerator {
 
   private appendTsSuccessTest(lines: string[], ep: Endpoint): void {
     const testPath = this.buildTestPath(ep);
-    const expectedStatus = this.getExpectedStatus(ep.method);
+    const expectedStatus = this.getEndpointStatus(ep);
     const safeMethod = escapeForStringLiteral(ep.method);
     const safePath = escapeForStringLiteral(ep.path);
     const safeTestPath = escapeForStringLiteral(testPath);

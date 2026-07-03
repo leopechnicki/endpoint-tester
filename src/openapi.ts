@@ -173,7 +173,13 @@ function buildParameter(p: EndpointParam): Record<string, unknown> {
 }
 
 function buildResponses(ep: Endpoint): Record<string, unknown> {
-  const status = METHOD_SUCCESS_STATUS[ep.method] ?? 200;
+  // Prefer the scanner-inferred status (e.g. Flask handler returning
+  // `(payload, 201)`) so the spec matches what the handler actually returns.
+  // Fall back to the HTTP-method default (POST -> 201, DELETE -> 204, else 200).
+  const status =
+    typeof ep.response?.status === 'number'
+      ? ep.response.status
+      : (METHOD_SUCCESS_STATUS[ep.method] ?? 200);
   const response: Record<string, unknown> = {
     description: status === 204 ? 'No Content' : 'Successful response',
   };

@@ -188,7 +188,10 @@ export class FlaskAdapter implements Adapter {
   private mapFlaskType(flaskType: string): string {
     switch (flaskType) {
       case 'int':
-        return 'number';
+        // Flask <int:id> converters ONLY match integer path segments (\d+).
+        // Return 'integer' (not 'number') so the OpenAPI schema is precise —
+        // 'number' allows floats. Fixes CONSOLIDATED#c (2026-07-02 audit).
+        return 'integer';
       case 'float':
         return 'number';
       case 'string':

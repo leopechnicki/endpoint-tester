@@ -62,7 +62,9 @@ def get_user(user_id):
     expect(endpoints[0].path).toBe('/users/:user_id');
     expect(endpoints[0].params).toHaveLength(1);
     expect(endpoints[0].params[0].name).toBe('user_id');
-    expect(endpoints[0].params[0].type).toBe('number');
+    // <int:> converters only match \d+ segments — expose as JSON-schema 'integer'
+    // (not 'number', which allows floats). Fixed 2026-07-03.
+    expect(endpoints[0].params[0].type).toBe('integer');
   });
 
   it('should parse simple path parameters', () => {
