@@ -157,3 +157,86 @@ describe('loadConfig', () => {
     );
   });
 });
+
+// Regression coverage for CONSOLIDATED#5 (2026-07-02 audit): a valid
+// `.endpointtesterrc` at the project root was ignored when the user ran
+// `endpoint-tester generate ./src` because the loader only ever searched
+// the scan directory. The fix walks (scanDir -> cwd -> parents) so a rc
+// file at the project root wins even when scanning a subdirectory.
+describe('loadConfig — search-path behavior (CONSOLIDATED#5 regression)', () => {
+  const originalCwd = process.cwd();
+  const ROOT = join(originalCwd, '.test-config-search-root');
+  const SUB = join(ROOT, 'src');
+
+  beforeEach(() => {
+    mkdirSync(SUB, { recursive: true });
+  });
+
+  afterEach(() => {
+    process.chdir(originalCwd);
+    try {
+      rmSync(ROOT, { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
+  });
+
+  it('finds a rc file placed in the parent of the scanned directory', () => {
+    writeFileSync(
+      join(ROOT, '.endpointtesterrc'),
+      JSON.stringify({ framework: 'flask', baseUrl: 'http://parent:9000' })
+    );
+
+    const result = loadConfig(SUB);
+    expect(result).not.toBeNull();
+    expect(result?.framework).toBe('flask');
+    expect(result?.baseUrl).toBe('http://parent:9000');
+  });
+
+  it('finds a rc file in the CWD even when scanning an unrelated directory', () => {
+    // Simulate: user cd'd into project root, config lives at project root,
+    // then ran `endpoint-tester generate /tmp/something-else`.
+    writeFileSync(
+      join(ROOT, '.endpointtesterrc'),
+      JSON.stringify({ testRunner: 'pytest' })
+    );
+
+    // Isolated dir that is NOT a parent of ROOT (so parent-walk can't find it)
+    const ISOLATED = join(originalCwd, '.test-config-isolated');
+    mkdirSync(ISOLATED, { recursive: true });
+    try {
+      process.chdir(ROOT);
+      const result = loadConfig(ISOLATED);
+      expect(result?.testRunner).toBe('pytest');
+    } finally {
+      try {
+        rmSync(ISOLATED, { recursive: true, force: true });
+      } catch {
+        /* ignore */
+      }
+    }
+  });
+
+  it('prefers a rc file in the scanned directory over one in CWD', () => {
+    // scanDir wins over cwd — most-specific location has precedence.
+    writeFileSync(
+      join(ROOT, '.endpointtesterrc'),
+      JSON.stringify({ framework: 'express' })
+    );
+    writeFileSync(
+      join(SUB, '.endpointtesterrc'),
+      JSON.stringify({ framework: 'fastapi' })
+    );
+
+    process.chdir(ROOT);
+    const result = loadConfig(SUB);
+    expect(result?.framework).toBe('fastapi');
+  });
+
+  it('returns null when no rc file exists anywhere on the search path', () => {
+    // No config planted in ROOT, SUB, or cwd — should walk to root and give up.
+    process.chdir(SUB);
+    const result = loadConfig(SUB);
+    expect(result).toBeNull();
+  });
+});

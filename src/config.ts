@@ -33,16 +33,58 @@ const CONFIG_FILE_NAMES = [
 ] as const;
 
 /**
- * Load the nearest config file from the given directory (or the current working
- * directory if not specified).
+ * Load the nearest config file, searching in order:
+ *  1. The scanned directory (e.g. `endpoint-tester generate ./src` → checks `./src`).
+ *  2. The current working directory (usually the project root, where users
+ *     naturally drop a `.endpointtesterrc` file). This is the case that the
+ *     2026-07-02 validation audit flagged: a valid rc file at the project root
+ *     was ignored because the CLI only ever looked inside the scan directory.
+ *  3. Parent directories of the scanned directory, up to the filesystem root
+ *     (mirrors how ESLint / Prettier walk upward to find config).
  *
- * Returns `null` if no config file is found.
- * Throws a descriptive error if a file exists but is not valid JSON or does not
- * conform to the expected shape.
+ * Returns `null` if no config file is found anywhere on the search path.
+ * Throws a descriptive error if a candidate file exists but is not valid JSON
+ * or does not conform to the expected shape.
  */
 export function loadConfig(directory?: string): EndpointTesterConfig | null {
-  const searchDir = directory ? resolve(directory) : process.cwd();
+  const scanDir = directory ? resolve(directory) : process.cwd();
+  const cwd = process.cwd();
 
+  // Deduplicate while preserving order — scanDir first (most specific), then
+  // cwd if different, then walk upward from scanDir toward the filesystem root.
+  const seen = new Set<string>();
+  const searchDirs: string[] = [];
+  const push = (d: string): void => {
+    if (!seen.has(d)) {
+      seen.add(d);
+      searchDirs.push(d);
+    }
+  };
+
+  push(scanDir);
+  push(cwd);
+
+  let cursor = scanDir;
+  while (true) {
+    const parent = resolve(cursor, '..');
+    if (parent === cursor) break; // Hit filesystem root
+    push(parent);
+    cursor = parent;
+  }
+
+  for (const dir of searchDirs) {
+    const found = tryLoadFrom(dir);
+    if (found !== null) return found;
+  }
+
+  return null;
+}
+
+/**
+ * Try each candidate config filename in one directory. Returns the parsed
+ * config, or `null` if no candidate exists there.
+ */
+function tryLoadFrom(searchDir: string): EndpointTesterConfig | null {
   for (const name of CONFIG_FILE_NAMES) {
     const filePath = join(searchDir, name);
     if (!existsSync(filePath)) continue;
