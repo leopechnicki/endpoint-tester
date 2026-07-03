@@ -396,7 +396,9 @@ describe('TestGenerator', () => {
             method: 'PUT',
             path: '/users/:id',
             handler: 'updateUser',
-            params: [{ name: 'id', location: 'path', type: 'string', required: true }],
+            params: [
+              { name: 'id', location: 'path', type: 'string', required: true },
+            ],
             body: { fields: { name: 'string' } },
             response: { status: 202 },
           },
