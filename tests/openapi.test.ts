@@ -213,7 +213,9 @@ describe('OpenApiGenerator — operations', () => {
       },
     ]) as Record<string, Record<string, Record<string, unknown>>>;
 
-    expect(d.paths['/users'].post.operationId).toBe('create_or_update_user_post');
+    expect(d.paths['/users'].post.operationId).toBe(
+      'create_or_update_user_post'
+    );
     expect(d.paths['/users'].put.operationId).toBe('create_or_update_user_put');
   });
 
@@ -238,7 +240,12 @@ describe('OpenApiGenerator — operations', () => {
       { method: 'POST', path: '/users', handler: 'upsert', params: [] },
       { method: 'PUT', path: '/users', handler: 'upsert', params: [] },
       { method: 'GET', path: '/users', handler: 'list_users', params: [] },
-      { method: 'DELETE', path: '/users/{id}', handler: 'remove_user', params: [] },
+      {
+        method: 'DELETE',
+        path: '/users/{id}',
+        handler: 'remove_user',
+        params: [],
+      },
     ]) as Record<string, Record<string, Record<string, unknown>>>;
 
     const ids = [

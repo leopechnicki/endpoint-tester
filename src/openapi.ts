@@ -93,7 +93,10 @@ export class OpenApiGenerator {
     return doc;
   }
 
-  private buildOperation(ep: Endpoint, operationId: string): Record<string, unknown> {
+  private buildOperation(
+    ep: Endpoint,
+    operationId: string
+  ): Record<string, unknown> {
     const op: Record<string, unknown> = {
       operationId,
       summary: `${ep.method} ${ep.path}`,
