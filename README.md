@@ -408,6 +408,12 @@ Instead of repeating CLI flags on every run, you can set defaults in a `.endpoin
 }
 ```
 
+The loader searches for the config in this order (first hit wins):
+
+1. The **scanned directory** (e.g. `endpoint-tester generate ./src` looks inside `./src`).
+2. The **current working directory** — where you actually ran the command. This is the case most users hit: rc file at the project root, `endpoint-tester generate ./src`.
+3. **Parent directories** of the scanned directory, walking up to the filesystem root (same pattern as ESLint/Prettier).
+
 CLI flags always override config file values. Supported fields:
 
 | Field | Type | Description |

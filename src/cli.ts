@@ -25,7 +25,16 @@ const { version } = JSON.parse(
 program
   .name('endpoint-tester')
   .description(
-    'Auto-discover API endpoints and generate comprehensive test suites'
+    [
+      'Auto-discover API endpoints and generate comprehensive test suites.',
+      '',
+      'Configuration:',
+      '  Drop a .endpointtesterrc (or .endpointtesterrc.json) file at your project',
+      '  root to set defaults for framework, outputDir, testRunner, baseUrl, and',
+      '  exclude. CLI flags always override rc-file values. The loader searches:',
+      '    1. the scanned directory, 2. the current working directory,',
+      '    3. parent directories up to the filesystem root.',
+    ].join('\n')
   )
   .version(version);
 
