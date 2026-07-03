@@ -28,7 +28,8 @@ urlpatterns = [
     expect(endpoints[0].path).toBe('/users/:pk/');
     expect(endpoints[0].params).toHaveLength(1);
     expect(endpoints[0].params[0].name).toBe('pk');
-    expect(endpoints[0].params[0].type).toBe('number');
+    // <int:> maps to JSON-schema 'integer' (fixed 2026-07-03)
+    expect(endpoints[0].params[0].type).toBe('integer');
   });
 
   it('should parse path() with string parameter', () => {

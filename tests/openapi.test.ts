@@ -257,6 +257,49 @@ describe('OpenApiGenerator — operations', () => {
     // Set-uniqueness guarantees spec-valid output on OAS 3.1
     expect(new Set(ids).size).toBe(ids.length);
   });
+
+  // Regression coverage for CONSOLIDATED#6 (2026-07-02 audit): OpenAPI output
+  // must reflect the handler-inferred status when present, not the HTTP-method
+  // default. A Flask handler returning `(payload, 202)` used to ship a spec
+  // claiming the endpoint returns 200/201 — misleading for downstream tools.
+  it('honors scanner-inferred response.status over the method default', () => {
+    const d = gen.buildDocument([
+      {
+        method: 'POST',
+        path: '/queue',
+        handler: 'enqueue',
+        params: [],
+        response: { status: 202, fields: { id: 'string' } },
+      },
+    ]) as Record<string, Record<string, Record<string, unknown>>>;
+
+    const responses = d.paths['/queue'].post.responses as Record<
+      string,
+      unknown
+    >;
+    expect(Object.keys(responses)).toEqual(['202']);
+    expect(responses['201']).toBeUndefined();
+  });
+
+  it('inferred 204 emits a no-content response even for GET', () => {
+    const d = gen.buildDocument([
+      {
+        method: 'GET',
+        path: '/health/quiet',
+        handler: 'healthQuiet',
+        params: [],
+        response: { status: 204 },
+      },
+    ]) as Record<string, Record<string, Record<string, unknown>>>;
+
+    const responses = d.paths['/health/quiet'].get.responses as Record<
+      string,
+      Record<string, unknown>
+    >;
+    expect(Object.keys(responses)).toEqual(['204']);
+    expect(responses['204'].description).toBe('No Content');
+    expect(responses['204'].content).toBeUndefined();
+  });
 });
 
 describe('OpenApiGenerator — serialization', () => {

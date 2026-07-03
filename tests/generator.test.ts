@@ -330,6 +330,85 @@ describe('TestGenerator', () => {
     });
   });
 
+  // Regression coverage for CONSOLIDATED#6 (2026-07-02 audit): the pytest
+  // generator hard-coded `assert response.status_code == 200` for every GET
+  // even when the handler clearly returned 202 (or 201, 204, etc). The scanner
+  // already exposes `ep.response.status` — the generator now uses it.
+  describe('getEndpointStatus — scanner-inferred status wins over method default', () => {
+    it('uses the inferred status when the scanner set it', () => {
+      const ep = {
+        method: 'GET' as const,
+        path: '/queue/:id',
+        handler: 'getQueue',
+        params: [],
+        response: { status: 202 },
+      };
+      expect(generator.getEndpointStatus(ep)).toBe(202);
+    });
+
+    it('falls back to the method default when no status is inferred', () => {
+      const ep = {
+        method: 'POST' as const,
+        path: '/users',
+        handler: 'createUser',
+        params: [],
+      };
+      // No response.status set — POST default is 201.
+      expect(generator.getEndpointStatus(ep)).toBe(201);
+    });
+
+    it('honors 204 override even for a GET (handler explicitly returned 204)', () => {
+      const ep = {
+        method: 'GET' as const,
+        path: '/health/quiet',
+        handler: 'healthQuiet',
+        params: [],
+        response: { status: 204 },
+      };
+      expect(generator.getEndpointStatus(ep)).toBe(204);
+    });
+
+    it('emits the inferred status in the generated pytest assertion', () => {
+      const output = generator.generate({
+        endpoints: [
+          {
+            method: 'POST',
+            path: '/queue',
+            handler: 'enqueue',
+            params: [],
+            body: { fields: { name: 'string' } },
+            response: { status: 202 }, // handler returns "Accepted"
+          },
+        ],
+        output: './tests',
+        format: 'pytest',
+        baseUrl: 'http://localhost:8080',
+      });
+      // The main success assertion must be 202, not the POST-default 201.
+      expect(output).toContain('assert response.status_code == 202');
+      expect(output).not.toContain('assert response.status_code == 201');
+    });
+
+    it('emits the inferred status in the generated vitest assertion', () => {
+      const output = generator.generate({
+        endpoints: [
+          {
+            method: 'PUT',
+            path: '/users/:id',
+            handler: 'updateUser',
+            params: [{ name: 'id', location: 'path', type: 'string', required: true }],
+            body: { fields: { name: 'string' } },
+            response: { status: 202 },
+          },
+        ],
+        output: './tests',
+        format: 'vitest',
+        baseUrl: 'http://localhost:8080',
+      });
+      expect(output).toContain('expect(response.status).toBe(202)');
+    });
+  });
+
   it('should throw on unsupported format', () => {
     expect(() =>
       generator.generate({

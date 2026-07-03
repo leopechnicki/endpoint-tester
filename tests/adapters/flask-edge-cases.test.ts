@@ -60,7 +60,8 @@ def get_member(org_id, team_id, member_id):
       expect(endpoints[0].params[0]).toEqual({
         name: 'org_id',
         location: 'path',
-        type: 'number',
+        // <int:> maps to JSON-schema 'integer' (fixed 2026-07-03)
+        type: 'integer',
         required: true,
       });
       expect(endpoints[0].params[2]).toEqual({
@@ -105,7 +106,8 @@ def get_post(user_id, slug):
       const endpoints = adapter.parse(source);
 
       expect(endpoints[0].params).toHaveLength(2);
-      expect(endpoints[0].params[0].type).toBe('number');
+      // <int:> maps to JSON-schema 'integer' (fixed 2026-07-03)
+      expect(endpoints[0].params[0].type).toBe('integer');
       expect(endpoints[0].params[1].type).toBe('string');
     });
   });

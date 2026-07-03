@@ -332,7 +332,9 @@ export class DjangoAdapter implements Adapter {
   private mapDjangoType(djangoType: string): string {
     switch (djangoType) {
       case 'int':
-        return 'number';
+        // Django's <int:> converter only matches [0-9]+ — expose as JSON-schema
+        // 'integer' (not 'number', which allows floats). Fixed 2026-07-03.
+        return 'integer';
       case 'str':
         return 'string';
       case 'slug':

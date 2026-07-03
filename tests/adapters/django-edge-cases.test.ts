@@ -18,13 +18,15 @@ urlpatterns = [
       expect(endpoints[0].params[0]).toEqual({
         name: 'org_id',
         location: 'path',
-        type: 'number',
+        // <int:> maps to JSON-schema 'integer' (fixed 2026-07-03)
+        type: 'integer',
         required: true,
       });
       expect(endpoints[0].params[1]).toEqual({
         name: 'team_id',
         location: 'path',
-        type: 'number',
+        // <int:> maps to JSON-schema 'integer' (fixed 2026-07-03)
+        type: 'integer',
         required: true,
       });
       expect(endpoints[0].params[2]).toEqual({
