@@ -192,6 +192,64 @@ describe('OpenApiGenerator — operations', () => {
       'post_imrobot_verify'
     );
   });
+
+  // Regression coverage for CONSOLIDATED#4 (2026-07-02 audit): a Flask app with
+  // @app.route('/users', methods=['POST','PUT']) emits two operations sharing the
+  // same handler name. OAS 3.1 requires operationId uniqueness; before the fix,
+  // openapi_spec_validator rejected the spec.
+  it('appends method suffix when the same handler is reused across methods (uniqueness)', () => {
+    const d = gen.buildDocument([
+      {
+        method: 'POST',
+        path: '/users',
+        handler: 'create_or_update_user',
+        params: [],
+      },
+      {
+        method: 'PUT',
+        path: '/users',
+        handler: 'create_or_update_user',
+        params: [],
+      },
+    ]) as Record<string, Record<string, Record<string, unknown>>>;
+
+    expect(d.paths['/users'].post.operationId).toBe('create_or_update_user_post');
+    expect(d.paths['/users'].put.operationId).toBe('create_or_update_user_put');
+  });
+
+  it('leaves single-method operationId unchanged (no unnecessary suffix)', () => {
+    const d = gen.buildDocument([
+      {
+        method: 'GET',
+        path: '/users/{id}',
+        handler: 'get_user',
+        params: [
+          { name: 'id', location: 'path', type: 'string', required: true },
+        ],
+      },
+    ]) as Record<string, Record<string, Record<string, unknown>>>;
+
+    // No collision -> preserve the bare handler name for backward compat
+    expect(d.paths['/users/{id}'].get.operationId).toBe('get_user');
+  });
+
+  it('emits globally unique operationIds across the full spec', () => {
+    const d = gen.buildDocument([
+      { method: 'POST', path: '/users', handler: 'upsert', params: [] },
+      { method: 'PUT', path: '/users', handler: 'upsert', params: [] },
+      { method: 'GET', path: '/users', handler: 'list_users', params: [] },
+      { method: 'DELETE', path: '/users/{id}', handler: 'remove_user', params: [] },
+    ]) as Record<string, Record<string, Record<string, unknown>>>;
+
+    const ids = [
+      d.paths['/users'].post.operationId,
+      d.paths['/users'].put.operationId,
+      d.paths['/users'].get.operationId,
+      d.paths['/users/{id}'].delete.operationId,
+    ];
+    // Set-uniqueness guarantees spec-valid output on OAS 3.1
+    expect(new Set(ids).size).toBe(ids.length);
+  });
 });
 
 describe('OpenApiGenerator — serialization', () => {
