@@ -54,10 +54,27 @@ export class OpenApiGenerator {
   ): Record<string, unknown> {
     const paths: Record<string, Record<string, unknown>> = {};
 
-    for (const ep of endpoints) {
+    // OAS 3.1 requires operationId be unique across the whole spec. Multi-method
+    // Flask/Express routes (@app.route('/users', methods=['POST','PUT'])) that share
+    // a handler function collide otherwise. Detect collisions in a first pass, then
+    // append the HTTP method to any operationId that would repeat -- preserving the
+    // bare handler name for endpoints where there's no collision (backward compat).
+    const baseIds = endpoints.map((ep) => baseOperationId(ep));
+    const idCounts = new Map<string, number>();
+    for (const id of baseIds) {
+      idCounts.set(id, (idCounts.get(id) ?? 0) + 1);
+    }
+
+    for (let i = 0; i < endpoints.length; i++) {
+      const ep = endpoints[i];
+      const baseId = baseIds[i];
+      const opId =
+        (idCounts.get(baseId) ?? 0) > 1
+          ? `${baseId}_${ep.method.toLowerCase()}`
+          : baseId;
       const pathKey = normalizePath(ep.path);
       const pathItem = (paths[pathKey] ??= {});
-      pathItem[ep.method.toLowerCase()] = this.buildOperation(ep);
+      pathItem[ep.method.toLowerCase()] = this.buildOperation(ep, opId);
     }
 
     const doc: Record<string, unknown> = {
@@ -76,11 +93,12 @@ export class OpenApiGenerator {
     return doc;
   }
 
-  private buildOperation(ep: Endpoint): Record<string, unknown> {
+  private buildOperation(
+    ep: Endpoint,
+    operationId: string
+  ): Record<string, unknown> {
     const op: Record<string, unknown> = {
-      operationId: isUsableOperationId(ep.handler)
-        ? ep.handler
-        : defaultOperationId(ep),
+      operationId,
       summary: `${ep.method} ${ep.path}`,
     };
 
@@ -134,6 +152,11 @@ function defaultOperationId(ep: Endpoint): string {
     .replace(/^_+|_+$/g, '')
     .replace(/_+/g, '_');
   return `${ep.method.toLowerCase()}_${slug || 'root'}`;
+}
+
+/** The pre-dedup operationId candidate: handler name if usable, else the default slug. */
+function baseOperationId(ep: Endpoint): string {
+  return isUsableOperationId(ep.handler) ? ep.handler : defaultOperationId(ep);
 }
 
 function hasBody(ep: Endpoint): boolean {
