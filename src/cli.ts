@@ -13,6 +13,7 @@ import { getAdapter } from './adapters/index.js';
 import { Framework, SUPPORTED_FORMATS, type SupportedFormat } from './types.js';
 import { detectFramework } from './detect.js';
 import { loadConfig } from './config.js';
+import { diffOpenApi, formatDiff } from './openapi-diff.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -584,6 +585,95 @@ program
         console.log(
           `CI PASS: ${currentCount} endpoints (baseline: ${baselineCount})`
         );
+      }
+    }
+  );
+
+program
+  .command('diff')
+  .description(
+    'Reconcile discovered endpoints in <directory> against an OpenAPI 3.x spec ' +
+      '(JSON) and report drift (endpoints missing from either side). Exits ' +
+      'non-zero when drift is found -- ideal for CI drift gates.'
+  )
+  .argument('<directory>', 'Directory to scan for endpoints')
+  .argument('<spec-file>', 'Path to an OpenAPI 3.x spec (JSON)')
+  .option(
+    '-f, --framework <framework>',
+    'Framework to scan for (express, fastapi, spring, django, flask, fastify, koa, nestjs, hono, gin, echo, chi, nethttp)'
+  )
+  .option(
+    '-e, --exclude <patterns...>',
+    'Glob patterns to exclude (repeatable, e.g. --exclude legacy/** test/**)'
+  )
+  .option(
+    '--json',
+    'Emit machine-readable JSON diff instead of the CLI-friendly text report'
+  )
+  .action(
+    async (
+      directory: string,
+      specFile: string,
+      options: {
+        framework?: string;
+        exclude?: string[];
+        json?: boolean;
+      }
+    ) => {
+      const dir = resolve(directory);
+      const specPath = resolve(specFile);
+
+      if (!existsSync(specPath)) {
+        console.error(`Spec file not found: ${specPath}`);
+        process.exit(1);
+      }
+
+      const config = loadConfig(dir);
+      const effectiveFramework = options.framework ?? config?.framework;
+      const effectiveExclude = options.exclude ?? config?.exclude;
+
+      const framework = await resolveFramework(dir, effectiveFramework);
+      const adapter = getAdapter(framework);
+      const scanner = new Scanner(adapter);
+
+      console.log(`Scanning ${dir} for ${framework} endpoints...`);
+      const endpoints = await scanner.scan({
+        directory: dir,
+        framework,
+        exclude: effectiveExclude,
+      });
+      console.log(`Found ${endpoints.length} discovered endpoint(s).`);
+
+      console.log(`Loading OpenAPI spec from ${specPath}...`);
+      let spec: unknown;
+      try {
+        spec = JSON.parse(readFileSync(specPath, 'utf-8'));
+      } catch (err) {
+        console.error(
+          `Failed to parse spec file as JSON: ${err instanceof Error ? err.message : String(err)}`
+        );
+        process.exit(1);
+      }
+
+      let result;
+      try {
+        result = diffOpenApi(endpoints, spec);
+      } catch (err) {
+        console.error(
+          `Invalid OpenAPI spec: ${err instanceof Error ? err.message : String(err)}`
+        );
+        process.exit(1);
+      }
+
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log('');
+        console.log(formatDiff(result));
+      }
+
+      if (result.hasDrift) {
+        process.exit(1);
       }
     }
   );
