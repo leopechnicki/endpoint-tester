@@ -258,6 +258,28 @@ Generated Postman Collection v2.1.0 -> postman-collection.json
 
 Import the file straight into Postman (or Insomnia — it also reads v2.1). Every request comes with a shared `{{baseUrl}}` variable, a placeholder `Authorization: Bearer {{authToken}}` header, and — for POST/PUT/PATCH — a raw JSON body seeded from the inferred fields.
 
+**Bonus — detect drift against an existing OpenAPI spec**
+
+Already ship a hand-maintained `openapi.json`? Point `endpoint-tester diff` at it and get a fail-loud drift check in one command — perfect for CI:
+
+```bash
+$ endpoint-tester diff ./src ./openapi.json
+
+Scanning ./src for express endpoints...
+Found 5 discovered endpoint(s).
+Loading OpenAPI spec from ./openapi.json...
+
+Drift detected between OpenAPI spec and source code (3 matched).
+
+In spec, but not in source (1):
+  - DELETE /users/{id}
+
+In source, but not in spec (1):
+  + PATCH /products/{id}
+```
+
+Exits non-zero when drift is found, so it drops into any CI pipeline as a hard gate. Add `--json` for machine-readable output. Path placeholders normalise across frameworks: Express `:id`, Flask `<int:id>`, and OpenAPI `{id}` all compare equal.
+
 ## Features
 
 - **Auto-detection** -- Detects your framework automatically from package.json, requirements.txt, pom.xml, or source imports. No config needed.
@@ -265,6 +287,7 @@ Import the file straight into Postman (or Insomnia — it also reads v2.1). Ever
 - **3 test formats** -- Vitest, Jest, Pytest. Generated tests include status code assertions, auth header tests, error response tests, and boundary value tests.
 - **OpenAPI 3.1 output** -- Emit a spec straight from your source code (`--format openapi`, JSON or YAML). Feed it to Swagger UI, Schemathesis, Dredd, Apidog, or `openapi-generator` — no manual annotations, zero runtime dependencies.
 - **Postman Collection v2.1** -- Emit a ready-to-import collection (`--format postman`), with `{{baseUrl}}`/`{{authToken}}` variables, body skeletons, and per-request path + query parameter descriptions.
+- **OpenAPI drift detection** -- Already have a hand-maintained `openapi.json`? Run `endpoint-tester diff <src> <spec>` to reconcile discovered routes against the spec and exit non-zero on drift. Drop it into CI to block PRs that add or delete endpoints without updating the spec.
 - **Smart route parsing** -- Handles router prefixes, middleware chains, `app.route()` chaining, multi-line decorators, class-level annotations, Blueprints, and more.
 - **Zero config** -- Works out of the box. One command, one output.
 
@@ -402,6 +425,25 @@ endpoint-tester ci ./src --baseline-file ci/baseline.json
 ```
 
 Exit codes: `0` = pass (count same or higher), `1` = fail (count dropped below baseline).
+
+### diff
+
+Reconcile discovered endpoints against an OpenAPI 3.x spec (JSON) and fail fast on drift — ideal as a CI gate on repos where the spec is the source of truth:
+
+```bash
+# Compare discovered routes against a checked-in spec
+endpoint-tester diff ./src ./openapi.json
+
+# Machine-readable output (drift report as JSON)
+endpoint-tester diff ./src ./openapi.json --json
+
+# Same, force framework
+endpoint-tester diff ./src ./openapi.json --framework fastapi
+```
+
+Exit codes: `0` = in sync, `1` = drift detected (missing endpoints on either side).
+
+Path placeholders normalise across frameworks and specs: Express `:id`, Flask `<int:id>`, and OpenAPI `{id}` all compare equal.
 
 ## GitHub Action
 
