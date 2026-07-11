@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  endpoint-tester animated terminal demo.
+  Pure SVG (SMIL animations) — renders inline on GitHub, no external deps, no
+  binary asset, git-friendly diffs. Loops every ~15 s.
+
+  Sequence:
+    1. $ endpoint-tester scan ./src
+    2. output: Auto-detected framework + endpoints list
+    3. $ endpoint-tester generate ./src --format vitest --output ./tests/api.test.ts
+    4. output: "Generated tests"
+    5. brief pause, then loop.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 500" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14">
+  <style>
+    .cmd     { fill: #f8f8f2; }
+    .prompt  { fill: #50fa7b; font-weight: 600; }
+    .info    { fill: #8be9fd; }
+    .method-get    { fill: #61afef; font-weight: 600; }
+    .method-post   { fill: #98c379; font-weight: 600; }
+    .method-put    { fill: #d19a66; font-weight: 600; }
+    .method-delete { fill: #e06c75; font-weight: 600; }
+    .method-patch  { fill: #c678dd; font-weight: 600; }
+    .path    { fill: #f8f8f2; }
+    .param   { fill: #6272a4; font-style: italic; }
+    .ok      { fill: #50fa7b; }
+    .dim     { fill: #6272a4; }
+    text { dominant-baseline: middle; }
+  </style>
+
+  <!-- Terminal window -->
+  <rect x="0" y="0" width="820" height="500" rx="10" fill="#282a36"/>
+  <rect x="0" y="0" width="820" height="28" rx="10" fill="#191a21"/>
+  <circle cx="18" cy="14" r="6" fill="#ff5555"/>
+  <circle cx="38" cy="14" r="6" fill="#f1fa8c"/>
+  <circle cx="58" cy="14" r="6" fill="#50fa7b"/>
+  <text x="410" y="14" text-anchor="middle" class="dim" font-size="12">endpoint-tester — demo</text>
+
+  <!-- SEQUENCE 1: scan command -->
+  <g opacity="0">
+    <text x="20" y="60"><tspan class="prompt">$</tspan> <tspan class="cmd">endpoint-tester scan ./src</tspan></text>
+    <animate attributeName="opacity" values="0;1;1;1;1;1;1;0" keyTimes="0;0.02;0.15;0.3;0.5;0.7;0.9;1" dur="15s" repeatCount="indefinite"/>
+  </g>
+
+  <!-- SEQUENCE 2: scan output -->
+  <g opacity="0">
+    <text x="20" y="90"  class="info">Auto-detected framework: express (high confidence)</text>
+    <text x="20" y="112" class="dim">Scanning ./src for express endpoints...</text>
+    <text x="20" y="134" class="cmd">Found 12 endpoint(s):</text>
+
+    <text x="30" y="162"><tspan class="method-get">GET</tspan>    <tspan class="path">/api/users/</tspan>              <tspan class="param">[params: page, limit]</tspan></text>
+    <text x="30" y="182"><tspan class="method-post">POST</tspan>   <tspan class="path">/api/users/</tspan></text>
+    <text x="30" y="202"><tspan class="method-get">GET</tspan>    <tspan class="path">/api/users/:id</tspan>           <tspan class="param">[params: id]</tspan></text>
+    <text x="30" y="222"><tspan class="method-put">PUT</tspan>    <tspan class="path">/api/users/:id</tspan>           <tspan class="param">[params: id]</tspan></text>
+    <text x="30" y="242"><tspan class="method-delete">DELETE</tspan> <tspan class="path">/api/users/:id</tspan>           <tspan class="param">[params: id]</tspan></text>
+    <text x="30" y="262"><tspan class="method-get">GET</tspan>    <tspan class="path">/api/users/:id/orders</tspan>    <tspan class="param">[params: id]</tspan></text>
+    <text x="30" y="282"><tspan class="method-get">GET</tspan>    <tspan class="path">/api/products/</tspan></text>
+    <text x="30" y="302"><tspan class="method-post">POST</tspan>   <tspan class="path">/api/products/</tspan></text>
+    <text x="30" y="322"><tspan class="method-get">GET</tspan>    <tspan class="path">/api/products/:id</tspan>        <tspan class="param">[params: id]</tspan></text>
+    <text x="30" y="342"><tspan class="method-patch">PATCH</tspan>  <tspan class="path">/api/products/:id</tspan>        <tspan class="param">[params: id]</tspan></text>
+    <text x="30" y="362"><tspan class="method-delete">DELETE</tspan> <tspan class="path">/api/products/:id</tspan>        <tspan class="param">[params: id]</tspan></text>
+    <text x="30" y="382"><tspan class="method-get">GET</tspan>    <tspan class="path">/health</tspan></text>
+
+    <animate attributeName="opacity" values="0;0;1;1;1;1;1;0" keyTimes="0;0.10;0.15;0.3;0.5;0.7;0.9;1" dur="15s" repeatCount="indefinite"/>
+  </g>
+
+  <!-- SEQUENCE 3: generate command (fade over the endpoint list) -->
+  <g opacity="0">
+    <rect x="0" y="405" width="820" height="90" fill="#282a36"/>
+    <text x="20" y="425"><tspan class="prompt">$</tspan> <tspan class="cmd">endpoint-tester generate ./src --format vitest --output ./tests/api.test.ts</tspan></text>
+    <animate attributeName="opacity" values="0;0;0;1;1;1;1;0" keyTimes="0;0.4;0.45;0.5;0.7;0.85;0.9;1" dur="15s" repeatCount="indefinite"/>
+  </g>
+
+  <!-- SEQUENCE 4: generate output -->
+  <g opacity="0">
+    <text x="20" y="455" class="ok">Generated 12 test cases -> ./tests/api.test.ts</text>
+    <text x="20" y="480"><tspan class="prompt">$</tspan> <tspan class="cmd">npx vitest run</tspan>  <tspan class="ok">PASS  tests/api.test.ts  (1.2s)</tspan></text>
+    <animate attributeName="opacity" values="0;0;0;0;1;1;1;0" keyTimes="0;0.5;0.55;0.6;0.65;0.85;0.9;1" dur="15s" repeatCount="indefinite"/>
+  </g>
+
+  <!-- Blinking cursor -->
+  <rect x="20" y="52" width="8" height="18" fill="#f8f8f2">
+    <animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/>
+    <animate attributeName="x" values="20;220;220;20;20;550;550;20" keyTimes="0;0.15;0.45;0.5;0.55;0.85;0.9;1" dur="15s" repeatCount="indefinite"/>
+    <animate attributeName="y" values="52;52;52;52;417;417;417;52" keyTimes="0;0.15;0.45;0.5;0.55;0.85;0.9;1" dur="15s" repeatCount="indefinite"/>
+  </rect>
+</svg>
