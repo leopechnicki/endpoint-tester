@@ -2,6 +2,7 @@ export { Scanner } from './scanner.js';
 export { loadConfig, type EndpointTesterConfig } from './config.js';
 export { TestGenerator } from './generator.js';
 export { OpenApiGenerator, toYaml, type OpenApiOptions } from './openapi.js';
+export { PostmanGenerator, type PostmanOptions } from './postman.js';
 export { detectFramework, type DetectionResult } from './detect.js';
 export {
   getAdapter,

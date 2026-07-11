@@ -250,12 +250,23 @@ paths:
 
 Feed this to Swagger UI, Schemathesis, or `openapi-generator` — no manual annotations needed.
 
+**Postman Collection export**
+
+```bash
+$ endpoint-tester generate ./src --format postman --output postman-collection.json
+
+Generated Postman Collection v2.1.0 -> postman-collection.json
+```
+
+Import the file straight into Postman (or Insomnia — it also reads v2.1). Every request comes with a shared `{{baseUrl}}` variable, a placeholder `Authorization: Bearer {{authToken}}` header, and — for POST/PUT/PATCH — a raw JSON body seeded from the inferred fields.
+
 ## Features
 
 - **Auto-detection** -- Detects your framework automatically from package.json, requirements.txt, pom.xml, or source imports. No config needed.
 - **13 framework adapters** -- Express.js, Fastify, Koa, NestJS, Hono, FastAPI, Flask, Django, Spring Boot, Gin, Echo, Chi, net/http. Extensible for any framework via the Adapter interface.
 - **3 test formats** -- Vitest, Jest, Pytest. Generated tests include status code assertions, auth header tests, error response tests, and boundary value tests.
 - **OpenAPI 3.1 output** -- Emit a spec straight from your source code (`--format openapi`, JSON or YAML). Feed it to Swagger UI, Schemathesis, Dredd, Apidog, or `openapi-generator` — no manual annotations, zero runtime dependencies.
+- **Postman Collection v2.1** -- Emit a ready-to-import collection (`--format postman`), with `{{baseUrl}}`/`{{authToken}}` variables, body skeletons, and per-request path + query parameter descriptions.
 - **Smart route parsing** -- Handles router prefixes, middleware chains, `app.route()` chaining, multi-line decorators, class-level annotations, Blueprints, and more.
 - **Zero config** -- Works out of the box. One command, one output.
 
@@ -368,7 +379,7 @@ Running `endpoint-tester generate ./src --format vitest` generates a complete te
 |---|---|---|
 | `--framework` / `-f` | Framework adapter (express, fastapi, spring, django, flask, fastify, koa, nestjs, hono, gin, echo, chi, nethttp). Auto-detected if omitted. | auto-detect |
 | `--output` / `-o` | Output path -- directory or file path | `./generated-tests` |
-| `--format` | Output format (vitest, jest, pytest, go, openapi) | `vitest` |
+| `--format` | Output format (vitest, jest, pytest, go, openapi, postman) | `vitest` |
 | `--base-url` | Base URL for test requests | `http://localhost:3000` |
 | `--watch` / `-w` | Watch for source file changes and re-scan/regenerate automatically | off |
 | `--exclude` / `-e` | Glob patterns to exclude (repeatable) | none |

@@ -13,7 +13,7 @@ export interface EndpointTesterConfig {
   framework?: Framework;
   /** Default output directory for generated tests. */
   outputDir?: string;
-  /** Default test runner format (vitest, jest, pytest, go, openapi). */
+  /** Default test runner format (vitest, jest, pytest, go, openapi, postman). */
   testRunner?: SupportedFormat;
   /** Glob patterns to include (scanned in addition to framework-default extensions). */
   include?: string[];
