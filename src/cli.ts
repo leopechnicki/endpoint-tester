@@ -8,6 +8,7 @@ import chokidar from 'chokidar';
 import { Scanner } from './scanner.js';
 import { TestGenerator } from './generator.js';
 import { OpenApiGenerator } from './openapi.js';
+import { PostmanGenerator } from './postman.js';
 import { getAdapter } from './adapters/index.js';
 import { Framework, SUPPORTED_FORMATS, type SupportedFormat } from './types.js';
 import { detectFramework } from './detect.js';
@@ -250,7 +251,7 @@ program
   )
   .option(
     '--format <format>',
-    'Output format (vitest, jest, pytest, go, openapi). openapi emits an OpenAPI 3.1 spec; .yaml/.yml output writes YAML, otherwise JSON.',
+    'Output format (vitest, jest, pytest, go, openapi, postman). openapi emits an OpenAPI 3.1 spec (.yaml/.yml -> YAML, else JSON); postman emits a Postman Collection v2.1.0 JSON file.',
     'vitest'
   )
   .option('--base-url <url>', 'Base URL for tests', 'http://localhost:3000')
@@ -365,6 +366,30 @@ program
 
           writeFileSync(specFile, specContent);
           console.log(`OpenAPI spec written to ${specFile}`);
+          return;
+        }
+
+        if (effectiveFormat === 'postman') {
+          console.log(
+            `Found ${endpoints.length} endpoint(s). Generating Postman collection...`
+          );
+
+          const collectionContent = new PostmanGenerator().generate(endpoints, {
+            baseUrl: effectiveBaseUrl,
+          });
+
+          let collectionFile: string;
+          if (outputExt) {
+            mkdirSync(dirname(outputPath), { recursive: true });
+            collectionFile = outputPath;
+          } else {
+            // Default output is the "./generated-tests" directory — write a Postman file there.
+            mkdirSync(outputPath, { recursive: true });
+            collectionFile = resolve(outputPath, 'postman-collection.json');
+          }
+
+          writeFileSync(collectionFile, collectionContent);
+          console.log(`Postman collection written to ${collectionFile}`);
           return;
         }
 

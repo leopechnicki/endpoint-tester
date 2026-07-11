@@ -70,13 +70,14 @@ export interface ScanOptions {
   exclude?: string[];
 }
 
-/** The set of output formats this tool supports (test formats + OpenAPI spec). */
+/** The set of output formats this tool supports (test formats + OpenAPI spec + Postman collection). */
 export const SUPPORTED_FORMATS = [
   'vitest',
   'jest',
   'pytest',
   'go',
   'openapi',
+  'postman',
 ] as const;
 export type SupportedFormat = (typeof SUPPORTED_FORMATS)[number];
 
