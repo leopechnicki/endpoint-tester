@@ -96,21 +96,21 @@ A real Express.js app, from zero to a complete test suite in under 60 seconds.
 **The app** (`src/app.ts`):
 
 ```typescript
-import express from 'express'
-import { Router } from 'express'
+import express from 'express';
+import { Router } from 'express';
 
-const app = express()
-const router = Router()
+const app = express();
+const router = Router();
 
-router.get('/users', listUsers)
-router.post('/users', createUser)
-router.get('/users/:id', getUser)
-router.put('/users/:id', updateUser)
-router.delete('/users/:id', deleteUser)
-router.get('/users/:id/orders', getUserOrders)
+router.get('/users', listUsers);
+router.post('/users', createUser);
+router.get('/users/:id', getUser);
+router.put('/users/:id', updateUser);
+router.delete('/users/:id', deleteUser);
+router.get('/users/:id/orders', getUserOrders);
 
-app.use('/api', router)
-app.listen(3000)
+app.use('/api', router);
+app.listen(3000);
 ```
 
 **Step 1 — Install**
@@ -149,23 +149,23 @@ Generated 6 test cases → ./tests/api.test.ts
 **The output** (`tests/api.test.ts`) — ready to run with `npx vitest`:
 
 ```typescript
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vitest';
 
-const BASE_URL = 'http://localhost:3000'
-const AUTH_TOKEN = process.env.TEST_AUTH_TOKEN ?? 'test-token'
+const BASE_URL = 'http://localhost:3000';
+const AUTH_TOKEN = process.env.TEST_AUTH_TOKEN ?? 'test-token';
 
 describe('GET /api/users', () => {
   it('returns 200', async () => {
-    const res = await fetch(`${BASE_URL}/api/users`)
-    expect(res.status).toBe(200)
-  })
+    const res = await fetch(`${BASE_URL}/api/users`);
+    expect(res.status).toBe(200);
+  });
   it('returns 401 without auth', async () => {
     const res = await fetch(`${BASE_URL}/api/users`, {
       headers: { Authorization: `Bearer invalid` },
-    })
-    expect(res.status).toBeOneOf([401, 403])
-  })
-})
+    });
+    expect(res.status).toBeOneOf([401, 403]);
+  });
+});
 
 describe('POST /api/users', () => {
   it('returns 201 with body', async () => {
@@ -176,29 +176,29 @@ describe('POST /api/users', () => {
         Authorization: `Bearer ${AUTH_TOKEN}`,
       },
       body: JSON.stringify({}),
-    })
-    expect(res.status).toBe(201)
-  })
+    });
+    expect(res.status).toBe(201);
+  });
   it('returns 4xx with missing body', async () => {
-    const res = await fetch(`${BASE_URL}/api/users`, { method: 'POST' })
-    expect(res.status).toBeGreaterThanOrEqual(400)
-  })
-})
+    const res = await fetch(`${BASE_URL}/api/users`, { method: 'POST' });
+    expect(res.status).toBeGreaterThanOrEqual(400);
+  });
+});
 
 describe('GET /api/users/:id', () => {
   it('returns 200 for valid id', async () => {
-    const res = await fetch(`${BASE_URL}/api/users/1`)
-    expect(res.status).toBe(200)
-  })
+    const res = await fetch(`${BASE_URL}/api/users/1`);
+    expect(res.status).toBe(200);
+  });
   it('returns 404 for nonexistent id', async () => {
-    const res = await fetch(`${BASE_URL}/api/users/999999`)
-    expect(res.status).toBe(404)
-  })
+    const res = await fetch(`${BASE_URL}/api/users/999999`);
+    expect(res.status).toBe(404);
+  });
   it('returns 4xx for empty id', async () => {
-    const res = await fetch(`${BASE_URL}/api/users/`)
-    expect(res.status).toBeGreaterThanOrEqual(400)
-  })
-})
+    const res = await fetch(`${BASE_URL}/api/users/`);
+    expect(res.status).toBeGreaterThanOrEqual(400);
+  });
+});
 
 // ... DELETE, PUT, and nested routes follow the same pattern
 ```
@@ -373,15 +373,15 @@ Running `endpoint-tester generate ./src --format vitest` generates a complete te
 
 ### scan / generate
 
-| Option | Description | Default |
-|---|---|---|
-| `--framework` / `-f` | Framework adapter (express, fastapi, spring, django, flask, fastify, koa, nestjs, hono, gin, echo, chi, nethttp). Auto-detected if omitted. | auto-detect |
-| `--output` / `-o` | Output path -- directory or file path | `./generated-tests` |
-| `--format` | Output format (vitest, jest, pytest, go, openapi, postman) | `vitest` |
-| `--base-url` | Base URL for test requests | `http://localhost:3000` |
-| `--watch` / `-w` | Watch for source file changes and re-scan/regenerate automatically | off |
-| `--exclude` / `-e` | Glob patterns to exclude (repeatable) | none |
-| `--verbose` / `-v` | Show source file and line number for each endpoint (scan only) | off |
+| Option               | Description                                                                                                                                 | Default                 |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `--framework` / `-f` | Framework adapter (express, fastapi, spring, django, flask, fastify, koa, nestjs, hono, gin, echo, chi, nethttp). Auto-detected if omitted. | auto-detect             |
+| `--output` / `-o`    | Output path -- directory or file path                                                                                                       | `./generated-tests`     |
+| `--format`           | Output format (vitest, jest, pytest, go, openapi, postman)                                                                                  | `vitest`                |
+| `--base-url`         | Base URL for test requests                                                                                                                  | `http://localhost:3000` |
+| `--watch` / `-w`     | Watch for source file changes and re-scan/regenerate automatically                                                                          | off                     |
+| `--exclude` / `-e`   | Glob patterns to exclude (repeatable)                                                                                                       | none                    |
+| `--verbose` / `-v`   | Show source file and line number for each endpoint (scan only)                                                                              | off                     |
 
 ### ci
 
@@ -402,6 +402,41 @@ endpoint-tester ci ./src --baseline-file ci/baseline.json
 ```
 
 Exit codes: `0` = pass (count same or higher), `1` = fail (count dropped below baseline).
+
+## GitHub Action
+
+For CI on GitHub, you don't need to install anything — a composite action lives at the repo root (`action.yml`). It runs `endpoint-tester ci` and fails the workflow if any endpoint is removed since the last baseline. Minimal example:
+
+```yaml
+# .github/workflows/endpoints.yml
+name: endpoint drift guard
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leopechnicki/endpoint-tester@v0.4.2
+        with:
+          directory: ./src
+          # framework: express       # omit to auto-detect
+          # baseline-file: .endpoint-tester-baseline.json
+          # update-baseline: 'false' # 'true' to refresh baseline
+```
+
+The action installs the latest published `endpoint-tester` (or the version you pin in `with.version:`), runs `endpoint-tester ci`, and exposes three outputs:
+
+| Output           | Description                                      |
+| ---------------- | ------------------------------------------------ |
+| `endpoint-count` | Number of endpoints discovered on this run       |
+| `baseline-count` | Number recorded in the baseline (or `0` if none) |
+| `drift`          | `ok` / `added` / `removed` / `no-baseline`       |
+
+Use them for downstream conditional steps (e.g. only notify Slack when `drift == 'removed'`).
 
 ## Config file
 
@@ -425,14 +460,14 @@ The loader searches for the config in this order (first hit wins):
 
 CLI flags always override config file values. Supported fields:
 
-| Field | Type | Description |
-|---|---|---|
-| `framework` | string | Override auto-detection (`express`, `fastapi`, `nestjs`, etc.) |
-| `outputDir` | string | Default output directory for generated tests |
-| `testRunner` | string | Default format (`vitest`, `jest`, `pytest`, `go`, `openapi`) |
-| `baseUrl` | string | Default base URL used in generated tests |
-| `exclude` | string[] | Glob patterns to exclude from scanning |
-| `include` | string[] | Additional glob patterns to include |
+| Field        | Type     | Description                                                    |
+| ------------ | -------- | -------------------------------------------------------------- |
+| `framework`  | string   | Override auto-detection (`express`, `fastapi`, `nestjs`, etc.) |
+| `outputDir`  | string   | Default output directory for generated tests                   |
+| `testRunner` | string   | Default format (`vitest`, `jest`, `pytest`, `go`, `openapi`)   |
+| `baseUrl`    | string   | Default base URL used in generated tests                       |
+| `exclude`    | string[] | Glob patterns to exclude from scanning                         |
+| `include`    | string[] | Additional glob patterns to include                            |
 
 ## Watch mode
 
@@ -450,31 +485,32 @@ Watches `.ts`, `.js`, `.py`, `.go`, `.java`, `.kt`, `.rs` files. Changes are deb
 
 ## Supported frameworks
 
-| Framework | Patterns detected |
-|---|---|
-| **Express.js** | `app.get()`, `router.post()`, `app.route().get().post()`, route params, router prefixes via `app.use()` and `router.use()`, middleware chains |
-| **Hono** | `app.get()`, `app.post()`, `app.route()` groups, `app.use()` mounts, `:param` path params, `c.req.query()` inference, body inference from `c.req.json()` |
-| **Fastify** | `fastify.get()`, `fastify.route({ method, url, handler })`, shorthand method registrations |
-| **Koa** | `@koa/router` with `router.get()` / `router.post()`, route params, `router.prefix()` |
-| **NestJS** | `@Controller('prefix')` + method decorators (`@Get`, `@Post`, ...), `@Param`, `@Query`, `@Body` DTO inference |
-| **FastAPI** | `@app.get()`, `@router.post()`, `APIRouter` prefixes, `{param}` parameters, multi-line decorators with kwargs |
-| **Flask** | `@app.route()` with methods list, `@app.get()` shorthand, `Blueprint` url_prefix, typed parameters (`<int:id>`) |
-| **Django** | `path()`, `re_path()`, typed parameters (`<int:pk>`), regex named groups |
+| Framework       | Patterns detected                                                                                                                                                             |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Express.js**  | `app.get()`, `router.post()`, `app.route().get().post()`, route params, router prefixes via `app.use()` and `router.use()`, middleware chains                                 |
+| **Hono**        | `app.get()`, `app.post()`, `app.route()` groups, `app.use()` mounts, `:param` path params, `c.req.query()` inference, body inference from `c.req.json()`                      |
+| **Fastify**     | `fastify.get()`, `fastify.route({ method, url, handler })`, shorthand method registrations                                                                                    |
+| **Koa**         | `@koa/router` with `router.get()` / `router.post()`, route params, `router.prefix()`                                                                                          |
+| **NestJS**      | `@Controller('prefix')` + method decorators (`@Get`, `@Post`, ...), `@Param`, `@Query`, `@Body` DTO inference                                                                 |
+| **FastAPI**     | `@app.get()`, `@router.post()`, `APIRouter` prefixes, `{param}` parameters, multi-line decorators with kwargs                                                                 |
+| **Flask**       | `@app.route()` with methods list, `@app.get()` shorthand, `Blueprint` url_prefix, typed parameters (`<int:id>`)                                                               |
+| **Django**      | `path()`, `re_path()`, typed parameters (`<int:pk>`), regex named groups                                                                                                      |
 | **Spring Boot** | `@GetMapping`, `@PostMapping`, `@RequestMapping` (both argument orderings), class-level `@RequestMapping` prefix, `@PathVariable`, multiline annotations, Kotlin `fun` syntax |
-| **Gin** | `r.GET()`, `r.POST()`, `router.Group()` prefixes, route params (`:id`), `gin.Default()` and `gin.New()` |
-| **Echo** | `e.GET()`, `e.POST()`, `e.Group()` prefixes, route params (`:id`), `echo.New()` |
-| **Chi** | `r.Get()`, `r.Post()`, `r.Route()`, `r.Mount()` prefixes, route params (`{id}`) |
-| **net/http** | `http.HandleFunc()`, `mux.HandleFunc()`, `http.Handle()`, route params (custom patterns) |
+| **Gin**         | `r.GET()`, `r.POST()`, `router.Group()` prefixes, route params (`:id`), `gin.Default()` and `gin.New()`                                                                       |
+| **Echo**        | `e.GET()`, `e.POST()`, `e.Group()` prefixes, route params (`:id`), `echo.New()`                                                                                               |
+| **Chi**         | `r.Get()`, `r.Post()`, `r.Route()`, `r.Mount()` prefixes, route params (`{id}`)                                                                                               |
+| **net/http**    | `http.HandleFunc()`, `mux.HandleFunc()`, `http.Handle()`, route params (custom patterns)                                                                                      |
 
 ## Test formats
 
-| | Vitest | Jest | Pytest |
-|---|---|---|---|
-| **Imports** | `import { describe, it, expect }` | Uses globals (no import) | `import requests` |
-| **File** | `.ts` | `.ts` | `.py` |
-| **Assertions** | `expect(response.status).toBe(201)` | Same | `assert response.status_code == 201` |
+|                | Vitest                              | Jest                     | Pytest                               |
+| -------------- | ----------------------------------- | ------------------------ | ------------------------------------ |
+| **Imports**    | `import { describe, it, expect }`   | Uses globals (no import) | `import requests`                    |
+| **File**       | `.ts`                               | `.ts`                    | `.py`                                |
+| **Assertions** | `expect(response.status).toBe(201)` | Same                     | `assert response.status_code == 201` |
 
 All formats generate:
+
 - Method-specific status code assertions (GET -> 200, POST -> 201, DELETE -> 204)
 - Auth header tests with Bearer token
 - Error response tests for body-accepting endpoints
@@ -483,24 +519,32 @@ All formats generate:
 ## Programmatic API
 
 ```typescript
-import { Scanner, TestGenerator, getAdapter, detectFramework } from "endpoint-tester";
+import {
+  Scanner,
+  TestGenerator,
+  getAdapter,
+  detectFramework,
+} from 'endpoint-tester';
 
 // Auto-detect the framework
-const detected = await detectFramework("./src");
-if (!detected) throw new Error("Could not detect framework");
+const detected = await detectFramework('./src');
+if (!detected) throw new Error('Could not detect framework');
 const adapter = getAdapter(detected.framework);
 
 // Scan for endpoints
 const scanner = new Scanner(adapter);
-const endpoints = await scanner.scan({ directory: "./src", framework: detected.framework });
+const endpoints = await scanner.scan({
+  directory: './src',
+  framework: detected.framework,
+});
 
 // Generate tests
 const generator = new TestGenerator();
 const tests = generator.generate({
   endpoints,
-  output: "./tests",
-  format: "vitest",
-  baseUrl: "http://localhost:3000",
+  output: './tests',
+  format: 'vitest',
+  baseUrl: 'http://localhost:3000',
 });
 ```
 
@@ -509,11 +553,11 @@ const tests = generator.generate({
 Implement the `Adapter` interface to add support for any framework:
 
 ```typescript
-import { Adapter, Endpoint, Framework, registerAdapter } from "endpoint-tester";
+import { Adapter, Endpoint, Framework, registerAdapter } from 'endpoint-tester';
 
 class HonoAdapter implements Adapter {
-  framework = "hono" as Framework;
-  fileExtensions = [".ts", ".js"];
+  framework = 'hono' as Framework;
+  fileExtensions = ['.ts', '.js'];
 
   parse(source: string, filePath?: string): Endpoint[] {
     // Your parsing logic here
@@ -530,21 +574,22 @@ registerAdapter(new HonoAdapter());
 
 The key distinction: most tools go **spec → tests**. endpoint-tester goes **source code → spec**.
 
-| | endpoint-tester | Schemathesis | Bruno | Optic |
-|---|---|---|---|---|
-| **Starting point** | Source code | OpenAPI/GraphQL spec | Existing API collection | OpenAPI spec or traffic |
-| **Spec required?** | No — generates it | Yes | Yes (or import) | Yes |
-| **Test framework** | Vitest, Jest, Pytest, Go | pytest (property-based) | Bruno runner | Optic CI |
-| **Approach** | Static analysis of routes | Fuzzing + property tests | Manual collection + run | Diff / contract testing |
-| **Framework-aware** | 13 built-in adapters | Spec-agnostic | Spec-agnostic | Spec-agnostic |
-| **Setup time** | Zero — point at source dir | Write/import spec first | Import or write collection | Import spec or capture traffic |
-| **CI guard** | Built-in (`ci` command) | Via pytest integration | Bruno CLI | Optic CI action |
-| **Watch mode** | Built-in (`--watch`) | No | No | No |
-| **OpenAPI export** | Yes (3.1, JSON + YAML) | Consumes, not generates | Consumes | Generates from traffic |
-| **Price** | Free / open-source | Free / open-source | Free / open-source | Free tier + paid |
-| **Language** | TypeScript (Node.js) | Python | Any (CLI) | TypeScript |
+|                     | endpoint-tester            | Schemathesis             | Bruno                      | Optic                          |
+| ------------------- | -------------------------- | ------------------------ | -------------------------- | ------------------------------ |
+| **Starting point**  | Source code                | OpenAPI/GraphQL spec     | Existing API collection    | OpenAPI spec or traffic        |
+| **Spec required?**  | No — generates it          | Yes                      | Yes (or import)            | Yes                            |
+| **Test framework**  | Vitest, Jest, Pytest, Go   | pytest (property-based)  | Bruno runner               | Optic CI                       |
+| **Approach**        | Static analysis of routes  | Fuzzing + property tests | Manual collection + run    | Diff / contract testing        |
+| **Framework-aware** | 13 built-in adapters       | Spec-agnostic            | Spec-agnostic              | Spec-agnostic                  |
+| **Setup time**      | Zero — point at source dir | Write/import spec first  | Import or write collection | Import spec or capture traffic |
+| **CI guard**        | Built-in (`ci` command)    | Via pytest integration   | Bruno CLI                  | Optic CI action                |
+| **Watch mode**      | Built-in (`--watch`)       | No                       | No                         | No                             |
+| **OpenAPI export**  | Yes (3.1, JSON + YAML)     | Consumes, not generates  | Consumes                   | Generates from traffic         |
+| **Price**           | Free / open-source         | Free / open-source       | Free / open-source         | Free tier + paid               |
+| **Language**        | TypeScript (Node.js)       | Python                   | Any (CLI)                  | TypeScript                     |
 
 **When to use each:**
+
 - **endpoint-tester** — You have source code but no spec yet. Start here: get tests and a spec in one step.
 - **Schemathesis** — You have a spec and want property-based fuzzing to find edge cases.
 - **Bruno** — You prefer a Git-friendly Postman replacement for manual API exploration.
@@ -552,14 +597,14 @@ The key distinction: most tools go **spec → tests**. endpoint-tester goes **so
 
 ### vs. writing tests manually or Postman
 
-| | endpoint-tester | Writing tests manually | Postman export |
-|---|---|---|---|
-| **Setup time** | 0 (auto-detects) | N/A | Import collection |
-| **Keeps up with code** | Re-scan anytime | Manual updates | Re-export |
-| **Boundary tests** | Automatic | Write each one | Manual |
-| **Auth tests** | Automatic | Write each one | Configure per request |
-| **Multi-framework** | 13 built-in | N/A | Framework-agnostic |
-| **CI friendly** | CLI output | Already in repo | Needs Newman |
+|                        | endpoint-tester  | Writing tests manually | Postman export        |
+| ---------------------- | ---------------- | ---------------------- | --------------------- |
+| **Setup time**         | 0 (auto-detects) | N/A                    | Import collection     |
+| **Keeps up with code** | Re-scan anytime  | Manual updates         | Re-export             |
+| **Boundary tests**     | Automatic        | Write each one         | Manual                |
+| **Auth tests**         | Automatic        | Write each one         | Configure per request |
+| **Multi-framework**    | 13 built-in      | N/A                    | Framework-agnostic    |
+| **CI friendly**        | CLI output       | Already in repo        | Needs Newman          |
 
 ## Development
 
@@ -610,7 +655,7 @@ import {
   type HttpMethod,
   type ScanOptions,
   type GenerateOptions,
-} from "endpoint-tester";
+} from 'endpoint-tester';
 ```
 
 ## Contributing

@@ -1,0 +1,128 @@
+name: 'endpoint-tester'
+description: >-
+  Auto-discover API endpoints in your source code and guard against accidental
+  removal. Fails CI if the number of routes drops below a saved baseline.
+author: 'Leonardo Pechnicki'
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  directory:
+    description: 'Directory to scan for endpoints.'
+    required: false
+    default: './src'
+  framework:
+    description: >-
+      Framework adapter to use (express, fastapi, spring, django, flask, fastify,
+      koa, nestjs, hono, gin, echo, chi, nethttp). If omitted, endpoint-tester
+      auto-detects from package.json / requirements.txt / pom.xml / imports.
+    required: false
+    default: ''
+  baseline-file:
+    description: >-
+      Path to the baseline JSON file that records the known endpoint count.
+      Created on first run.
+    required: false
+    default: '.endpoint-tester-baseline.json'
+  update-baseline:
+    description: >-
+      When "true", refresh the baseline file to the current endpoint count and
+      commit it back to the repo (does NOT fail the run). Use this after an
+      intentional endpoint removal.
+    required: false
+    default: 'false'
+  version:
+    description: >-
+      endpoint-tester version to install. Use "latest" for the newest release,
+      or pin to a specific version (e.g. "0.4.2") for reproducible CI.
+    required: false
+    default: 'latest'
+  node-version:
+    description: >-
+      Node.js version used to run endpoint-tester. Must be >= 20.
+    required: false
+    default: '20'
+
+outputs:
+  endpoint-count:
+    description: 'The number of endpoints discovered in this run.'
+    value: ${{ steps.scan.outputs.endpoint-count }}
+  baseline-count:
+    description: 'The endpoint count recorded in the baseline (or "0" if none).'
+    value: ${{ steps.scan.outputs.baseline-count }}
+  drift:
+    description: >-
+      One of: "ok" (count unchanged or increased), "added" (new endpoints
+      detected), "removed" (endpoints missing — CI fails), or "no-baseline"
+      (baseline file did not exist and was just created).
+    value: ${{ steps.scan.outputs.drift }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Install endpoint-tester
+      shell: bash
+      run: |
+        if [ "${{ inputs.version }}" = "latest" ]; then
+          npm install -g endpoint-tester
+        else
+          npm install -g "endpoint-tester@${{ inputs.version }}"
+        fi
+        endpoint-tester --version
+
+    - name: Run endpoint-tester ci
+      id: scan
+      shell: bash
+      run: |
+        set +e
+
+        BASELINE_BEFORE="0"
+        if [ -f "${{ inputs.baseline-file }}" ]; then
+          BASELINE_BEFORE=$(node -e "console.log(JSON.parse(require('fs').readFileSync('${{ inputs.baseline-file }}','utf8')).endpoints.length)" 2>/dev/null || echo "0")
+        fi
+
+        FRAMEWORK_FLAG=""
+        if [ -n "${{ inputs.framework }}" ]; then
+          FRAMEWORK_FLAG="--framework ${{ inputs.framework }}"
+        fi
+
+        UPDATE_FLAG=""
+        if [ "${{ inputs.update-baseline }}" = "true" ]; then
+          UPDATE_FLAG="--update-baseline"
+        fi
+
+        OUTPUT_FILE=$(mktemp)
+        endpoint-tester ci "${{ inputs.directory }}" \
+          $FRAMEWORK_FLAG \
+          --baseline-file "${{ inputs.baseline-file }}" \
+          $UPDATE_FLAG 2>&1 | tee "$OUTPUT_FILE"
+        EXIT_CODE=${PIPESTATUS[0]}
+
+        CURRENT=$(grep -oE 'Found [0-9]+ endpoint' "$OUTPUT_FILE" | head -1 | grep -oE '[0-9]+' || echo "0")
+
+        if [ "$EXIT_CODE" -eq 0 ]; then
+          if [ "$BASELINE_BEFORE" = "0" ]; then
+            DRIFT="no-baseline"
+          elif [ "$CURRENT" -gt "$BASELINE_BEFORE" ]; then
+            DRIFT="added"
+          else
+            DRIFT="ok"
+          fi
+        else
+          DRIFT="removed"
+        fi
+
+        {
+          echo "endpoint-count=$CURRENT"
+          echo "baseline-count=$BASELINE_BEFORE"
+          echo "drift=$DRIFT"
+        } >> "$GITHUB_OUTPUT"
+
+        echo "endpoint-tester summary: current=$CURRENT baseline=$BASELINE_BEFORE drift=$DRIFT exit=$EXIT_CODE"
+        exit $EXIT_CODE
