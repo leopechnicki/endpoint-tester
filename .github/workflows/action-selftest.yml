@@ -1,0 +1,57 @@
+name: Action self-test
+
+# Verifies the composite action defined at the repo root (action.yml) actually
+# runs end-to-end against a real sample. Runs on PRs that touch action.yml or
+# examples/express-sample, and on every push to main.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'action.yml'
+      - 'examples/**'
+      - '.github/workflows/action-selftest.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'action.yml'
+      - 'examples/**'
+      - '.github/workflows/action-selftest.yml'
+  workflow_dispatch:
+
+jobs:
+  selftest:
+    name: Self-test action against express-sample
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run endpoint-tester action (no baseline -> creates one)
+        id: first-run
+        uses: ./
+        with:
+          directory: ./examples/express-sample/src
+          framework: express
+          baseline-file: .endpoint-tester-selftest-baseline.json
+
+      - name: Verify first-run outputs
+        shell: bash
+        run: |
+          echo "endpoint-count: ${{ steps.first-run.outputs.endpoint-count }}"
+          echo "baseline-count: ${{ steps.first-run.outputs.baseline-count }}"
+          echo "drift:          ${{ steps.first-run.outputs.drift }}"
+          test "${{ steps.first-run.outputs.drift }}" = "no-baseline"
+          test "${{ steps.first-run.outputs.endpoint-count }}" -gt "0"
+
+      - name: Run endpoint-tester action again (should be ok)
+        id: second-run
+        uses: ./
+        with:
+          directory: ./examples/express-sample/src
+          framework: express
+          baseline-file: .endpoint-tester-selftest-baseline.json
+
+      - name: Verify second-run outputs
+        shell: bash
+        run: |
+          echo "drift: ${{ steps.second-run.outputs.drift }}"
+          test "${{ steps.second-run.outputs.drift }}" = "ok"
