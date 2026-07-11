@@ -18,13 +18,11 @@
 
 ## Demo
 
-<!-- Screenshot / GIF placeholder -->
-<!-- To add a demo GIF: record your terminal running the Quick Demo below,
-     upload to the repo (docs/demo.gif) and replace this comment with:
-     ![endpoint-tester demo](docs/demo.gif) -->
+<p align="center">
+  <img src="docs/demo.svg" alt="endpoint-tester scan and generate demo" width="820">
+</p>
 
-> A GIF showing a full scan + generate cycle will appear here. In the meantime,
-> see the [Quick Demo](#quick-demo) section below for the exact terminal output.
+> A full scan + generate cycle on a real Express app in ~5 seconds. See the [Quick Demo](#quick-demo) section for the exact terminal output.
 
 ---
 
