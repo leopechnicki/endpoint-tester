@@ -445,6 +445,38 @@ Exit codes: `0` = in sync, `1` = drift detected (missing endpoints on either sid
 
 Path placeholders normalise across frameworks and specs: Express `:id`, Flask `<int:id>`, and OpenAPI `{id}` all compare equal.
 
+### from
+
+Generate a test scaffold **directly from an OpenAPI/Swagger spec** — no source scanning required. Ideal when the API contract is your source of truth (public APIs, spec-first services, gateways).
+
+Supports OpenAPI 3.x and Swagger 2.0, JSON or YAML, local path or `http(s)` URL:
+
+```bash
+# From a local JSON spec (default: vitest tests written to ./generated-tests/)
+endpoint-tester from ./openapi.json
+
+# From a YAML spec, custom output and format
+endpoint-tester from ./openapi.yaml --output ./tests --format pytest
+
+# From a remote spec URL
+endpoint-tester from https://petstore3.swagger.io/api/v3/openapi.json --output ./tests
+
+# Re-emit as a Postman collection
+endpoint-tester from ./openapi.json --format postman --output ./postman.json
+
+# Override the base path applied to every imported endpoint
+endpoint-tester from ./openapi.yaml --base-path /api/v2
+```
+
+| Option        | Description                                                        | Default                 |
+| ------------- | ------------------------------------------------------------------ | ----------------------- |
+| `--output`    | Output path — directory or file                                    | `./generated-tests`     |
+| `--format`    | Output format (`vitest`, `jest`, `pytest`, `go`, `openapi`, `postman`) | `vitest`                |
+| `--base-url`  | Base URL for test requests                                         | `http://localhost:3000` |
+| `--base-path` | Prepend a base path to every imported endpoint (overrides Swagger 2 `basePath`) | none                    |
+
+Exit codes: `0` on success, `1` when the spec cannot be loaded or parsed, `--format`/`--base-url` are invalid, or the spec fails OpenAPI validation.
+
 ## GitHub Action
 
 For CI on GitHub, you don't need to install anything — a composite action lives at the repo root (`action.yml`). It runs `endpoint-tester ci` and fails the workflow if any endpoint is removed since the last baseline. Minimal example:

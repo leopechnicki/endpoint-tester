@@ -14,6 +14,8 @@ import { Framework, SUPPORTED_FORMATS, type SupportedFormat } from './types.js';
 import { detectFramework } from './detect.js';
 import { loadConfig } from './config.js';
 import { diffOpenApi, formatDiff } from './openapi-diff.js';
+import { importOpenApiDocument } from './openapi-import.js';
+import yaml from 'js-yaml';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -675,6 +677,222 @@ program
       if (result.hasDrift) {
         process.exit(1);
       }
+    }
+  );
+
+/**
+ * Load an OpenAPI/Swagger spec from a local file path or an http(s) URL.
+ * Supports JSON and YAML — format is chosen by extension, then content sniffing.
+ */
+async function loadSpec(specRef: string): Promise<Record<string, unknown>> {
+  let raw: string;
+  let sourceLabel: string;
+
+  if (/^https?:\/\//i.test(specRef)) {
+    sourceLabel = specRef;
+    const res = await fetch(specRef);
+    if (!res.ok) {
+      throw new Error(
+        `Failed to fetch spec from ${specRef}: HTTP ${res.status} ${res.statusText}`
+      );
+    }
+    raw = await res.text();
+  } else {
+    const specPath = resolve(specRef);
+    if (!existsSync(specPath)) {
+      throw new Error(`Spec file not found: ${specPath}`);
+    }
+    sourceLabel = specPath;
+    raw = readFileSync(specPath, 'utf-8');
+  }
+
+  const ext = extname(sourceLabel).toLowerCase();
+  const isYaml = ext === '.yaml' || ext === '.yml';
+  const isJson = ext === '.json';
+
+  const parseYaml = (): Record<string, unknown> => {
+    const parsed = yaml.load(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error(`Spec at ${sourceLabel} did not parse to an object.`);
+    }
+    return parsed as Record<string, unknown>;
+  };
+
+  const parseJson = (): Record<string, unknown> => {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error(`Spec at ${sourceLabel} did not parse to an object.`);
+    }
+    return parsed as Record<string, unknown>;
+  };
+
+  try {
+    if (isYaml) return parseYaml();
+    if (isJson) return parseJson();
+    // No/unknown extension — try JSON first, then YAML
+    try {
+      return parseJson();
+    } catch {
+      return parseYaml();
+    }
+  } catch (err) {
+    throw new Error(
+      `Failed to parse spec ${sourceLabel}: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+}
+
+program
+  .command('from')
+  .description(
+    'Generate a test scaffold directly from an OpenAPI 3.x or Swagger 2.0 spec ' +
+      '(JSON or YAML, local path or http(s) URL). Skips source-code scanning — ' +
+      'ideal when you already publish an API contract.'
+  )
+  .argument('<spec>', 'Path or URL to an OpenAPI/Swagger spec (JSON or YAML)')
+  .option(
+    '-o, --output <path>',
+    'Output path — directory or file (e.g. ./tests or ./tests/api.test.ts)',
+    './generated-tests'
+  )
+  .option(
+    '--format <format>',
+    'Output format (vitest, jest, pytest, go, openapi, postman)',
+    'vitest'
+  )
+  .option('--base-url <url>', 'Base URL for tests', 'http://localhost:3000')
+  .option(
+    '--base-path <path>',
+    'Prepend this base path to every endpoint from the spec (overrides Swagger 2 basePath)'
+  )
+  .action(
+    async (
+      spec: string,
+      options: {
+        output: string;
+        format: string;
+        baseUrl: string;
+        basePath?: string;
+      }
+    ) => {
+      try {
+        new URL(options.baseUrl);
+      } catch {
+        console.error(
+          `Invalid --base-url: "${options.baseUrl}" is not a valid URL.`
+        );
+        process.exit(1);
+      }
+
+      const validFormats: readonly string[] = SUPPORTED_FORMATS;
+      if (!validFormats.includes(options.format)) {
+        console.error(
+          `Invalid --format: "${options.format}". Must be one of: ${validFormats.join(', ')}.`
+        );
+        process.exit(1);
+      }
+
+      console.log(`Loading OpenAPI spec from ${spec}...`);
+      let doc: Record<string, unknown>;
+      try {
+        doc = await loadSpec(spec);
+      } catch (err) {
+        console.error(err instanceof Error ? err.message : String(err));
+        process.exit(1);
+      }
+
+      let endpoints;
+      try {
+        endpoints = importOpenApiDocument(doc, {
+          basePath: options.basePath,
+        });
+      } catch (err) {
+        console.error(
+          `Invalid OpenAPI spec: ${err instanceof Error ? err.message : String(err)}`
+        );
+        process.exit(1);
+      }
+
+      console.log(`Imported ${endpoints.length} endpoint(s) from spec.`);
+
+      if (endpoints.length === 0) {
+        console.log('No endpoints found in spec.');
+        return;
+      }
+
+      const outputPath = resolve(options.output);
+      const outputExt = extname(outputPath).toLowerCase();
+
+      if (options.format === 'openapi') {
+        const isYamlOut = outputExt === '.yaml' || outputExt === '.yml';
+        const specContent = new OpenApiGenerator().generate(endpoints, {
+          baseUrl: options.baseUrl,
+          format: isYamlOut ? 'yaml' : 'json',
+        });
+
+        let specFile: string;
+        if (outputExt) {
+          mkdirSync(dirname(outputPath), { recursive: true });
+          specFile = outputPath;
+        } else {
+          mkdirSync(outputPath, { recursive: true });
+          specFile = resolve(outputPath, 'openapi.json');
+        }
+
+        writeFileSync(specFile, specContent);
+        console.log(`OpenAPI spec written to ${specFile}`);
+        return;
+      }
+
+      if (options.format === 'postman') {
+        const collectionContent = new PostmanGenerator().generate(endpoints, {
+          baseUrl: options.baseUrl,
+        });
+
+        let collectionFile: string;
+        if (outputExt) {
+          mkdirSync(dirname(outputPath), { recursive: true });
+          collectionFile = outputPath;
+        } else {
+          mkdirSync(outputPath, { recursive: true });
+          collectionFile = resolve(outputPath, 'postman-collection.json');
+        }
+
+        writeFileSync(collectionFile, collectionContent);
+        console.log(`Postman collection written to ${collectionFile}`);
+        return;
+      }
+
+      const generator = new TestGenerator();
+      const testContent = generator.generate({
+        endpoints,
+        output: options.output,
+        format: options.format as SupportedFormat,
+        baseUrl: options.baseUrl,
+      });
+
+      let outFile: string;
+      if (outputExt) {
+        mkdirSync(dirname(outputPath), { recursive: true });
+        outFile = outputPath;
+      } else {
+        mkdirSync(outputPath, { recursive: true });
+        const ext =
+          options.format === 'pytest'
+            ? 'py'
+            : options.format === 'go'
+              ? 'go'
+              : 'ts';
+        const testFileSuffix = options.format === 'go' ? '_test' : '.test';
+        const testFileName =
+          options.format === 'go'
+            ? `endpoints_test.${ext}`
+            : `endpoints${testFileSuffix}.${ext}`;
+        outFile = resolve(outputPath, testFileName);
+      }
+
+      writeFileSync(outFile, testContent);
+      console.log(`Tests written to ${outFile}`);
     }
   );
 

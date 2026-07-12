@@ -10,6 +10,7 @@ export {
   type DiffEntry,
   type DiffResult,
 } from './openapi-diff.js';
+export { importOpenApiDocument, type ImportOptions } from './openapi-import.js';
 export { detectFramework, type DetectionResult } from './detect.js';
 export {
   getAdapter,
