@@ -77,6 +77,7 @@ export const SUPPORTED_FORMATS = [
   'pytest',
   'go',
   'openapi',
+  'postman',
 ] as const;
 export type SupportedFormat = (typeof SUPPORTED_FORMATS)[number];
 

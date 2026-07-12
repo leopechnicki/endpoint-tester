@@ -12,6 +12,7 @@ import { getAdapter } from './adapters/index.js';
 import { Framework, SUPPORTED_FORMATS, type SupportedFormat } from './types.js';
 import { detectFramework } from './detect.js';
 import { loadConfig } from './config.js';
+import { PostmanGenerator } from './postman.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -250,7 +251,7 @@ program
   )
   .option(
     '--format <format>',
-    'Output format (vitest, jest, pytest, go, openapi). openapi emits an OpenAPI 3.1 spec; .yaml/.yml output writes YAML, otherwise JSON.',
+    'Output format (vitest, jest, pytest, go, openapi, postman). openapi emits an OpenAPI 3.1 spec; postman emits a Postman Collection v2.1.',
     'vitest'
   )
   .option('--base-url <url>', 'Base URL for tests', 'http://localhost:3000')
@@ -365,6 +366,29 @@ program
 
           writeFileSync(specFile, specContent);
           console.log(`OpenAPI spec written to ${specFile}`);
+          return;
+        }
+
+        if (effectiveFormat === 'postman') {
+          console.log(
+            `Found ${endpoints.length} endpoint(s). Generating Postman Collection...`
+          );
+
+          const postmanContent = new PostmanGenerator().generate(endpoints, {
+            baseUrl: effectiveBaseUrl,
+          });
+
+          let postmanFile: string;
+          if (outputExt) {
+            mkdirSync(dirname(outputPath), { recursive: true });
+            postmanFile = outputPath;
+          } else {
+            mkdirSync(outputPath, { recursive: true });
+            postmanFile = resolve(outputPath, 'postman_collection.json');
+          }
+
+          writeFileSync(postmanFile, postmanContent);
+          console.log(`Postman Collection written to ${postmanFile}`);
           return;
         }
 
