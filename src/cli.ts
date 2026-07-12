@@ -12,6 +12,7 @@ import { getAdapter } from './adapters/index.js';
 import { Framework, SUPPORTED_FORMATS, type SupportedFormat } from './types.js';
 import { detectFramework } from './detect.js';
 import { loadConfig } from './config.js';
+import { importOpenApiSpec } from './openapi-import.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -560,6 +561,140 @@ program
           `CI PASS: ${currentCount} endpoints (baseline: ${baselineCount})`
         );
       }
+    }
+  );
+
+program
+  .command('from')
+  .description(
+    'Import endpoints from an OpenAPI/Swagger spec and generate tests'
+  )
+  .argument(
+    '<spec-file>',
+    'Path to OpenAPI 3.x or Swagger 2.x spec file (JSON or YAML)'
+  )
+  .option(
+    '-o, --output <path>',
+    'Output path -- directory or file (e.g. ./tests or ./tests/api.test.ts)',
+    './generated-tests'
+  )
+  .option(
+    '--format <format>',
+    'Output format (vitest, jest, pytest, go, openapi). openapi re-emits the spec; .yaml/.yml output writes YAML, otherwise JSON.',
+    'vitest'
+  )
+  .option('--base-url <url>', 'Base URL for tests', 'http://localhost:3000')
+  .action(
+    (
+      specFile: string,
+      options: {
+        output: string;
+        format: string;
+        baseUrl: string;
+      }
+    ) => {
+      const specPath = resolve(specFile);
+
+      if (!existsSync(specPath)) {
+        console.error(`Spec file not found: ${specPath}`);
+        process.exit(1);
+      }
+
+      const validFormats: readonly string[] = SUPPORTED_FORMATS;
+      if (!validFormats.includes(options.format)) {
+        console.error(
+          `Invalid --format: "${options.format}". Must be one of: ${validFormats.join(', ')}.`
+        );
+        process.exit(1);
+      }
+
+      try {
+        new URL(options.baseUrl);
+      } catch {
+        console.error(
+          `Invalid --base-url: "${options.baseUrl}" is not a valid URL.`
+        );
+        process.exit(1);
+      }
+
+      console.log(`Importing endpoints from ${specPath}...`);
+
+      const endpoints = importOpenApiSpec(specPath);
+
+      if (endpoints.length === 0) {
+        console.log('No endpoints found in spec file.');
+        return;
+      }
+
+      console.log(`Found ${endpoints.length} endpoint(s) in spec.\n`);
+
+      for (const ep of endpoints) {
+        const params =
+          ep.params.length > 0
+            ? ` [params: ${ep.params.map((p) => p.name).join(', ')}]`
+            : '';
+        console.log(`  ${ep.method.padEnd(7)} ${ep.path}${params}`);
+      }
+
+      const outputPath = resolve(options.output);
+      const outputExt = extname(outputPath).toLowerCase();
+
+      if (options.format === 'openapi') {
+        console.log(`\nRe-emitting OpenAPI spec...`);
+
+        const isYaml = outputExt === '.yaml' || outputExt === '.yml';
+        const specContent = new OpenApiGenerator().generate(endpoints, {
+          baseUrl: options.baseUrl,
+          format: isYaml ? 'yaml' : 'json',
+        });
+
+        let specOutFile: string;
+        if (outputExt) {
+          mkdirSync(dirname(outputPath), { recursive: true });
+          specOutFile = outputPath;
+        } else {
+          mkdirSync(outputPath, { recursive: true });
+          specOutFile = resolve(outputPath, 'openapi.json');
+        }
+
+        writeFileSync(specOutFile, specContent);
+        console.log(`OpenAPI spec written to ${specOutFile}`);
+        return;
+      }
+
+      console.log(`\nGenerating ${options.format} tests...`);
+
+      const generator = new TestGenerator();
+      const testContent = generator.generate({
+        endpoints,
+        output: options.output,
+        format: options.format as SupportedFormat,
+        baseUrl: options.baseUrl,
+      });
+
+      let outFile: string;
+
+      if (outputExt) {
+        mkdirSync(dirname(outputPath), { recursive: true });
+        outFile = outputPath;
+      } else {
+        mkdirSync(outputPath, { recursive: true });
+        const ext =
+          options.format === 'pytest'
+            ? 'py'
+            : options.format === 'go'
+              ? 'go'
+              : 'ts';
+        const testFileSuffix = options.format === 'go' ? '_test' : '.test';
+        const testFileName =
+          options.format === 'go'
+            ? `endpoints_test.${ext}`
+            : `endpoints${testFileSuffix}.${ext}`;
+        outFile = resolve(outputPath, testFileName);
+      }
+
+      writeFileSync(outFile, testContent);
+      console.log(`Tests written to ${outFile}`);
     }
   );
 

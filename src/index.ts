@@ -1,4 +1,9 @@
 export { Scanner } from './scanner.js';
+export {
+  importOpenApiSpec,
+  importOpenApiString,
+  parseSimpleYaml,
+} from './openapi-import.js';
 export { loadConfig, type EndpointTesterConfig } from './config.js';
 export { TestGenerator } from './generator.js';
 export { OpenApiGenerator, toYaml, type OpenApiOptions } from './openapi.js';
