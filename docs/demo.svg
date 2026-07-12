@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 540">
+  <style>
+    @keyframes typing {
+      from { width: 0; }
+      to { width: 100%; }
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .terminal-bg { fill: #1e1e2e; rx: 8; ry: 8; }
+    .title-bar { fill: #313244; }
+    .dot-red { fill: #f38ba8; }
+    .dot-yellow { fill: #f9e2af; }
+    .dot-green { fill: #a6e3a1; }
+    .title-text { fill: #cdd6f4; font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace; font-size: 13px; }
+    .prompt { fill: #89b4fa; }
+    .command { fill: #cdd6f4; }
+    .output { fill: #a6adc8; }
+    .success { fill: #a6e3a1; }
+    .highlight { fill: #f9e2af; }
+    .method-get { fill: #89b4fa; }
+    .method-post { fill: #a6e3a1; }
+    .method-put { fill: #f9e2af; }
+    .method-delete { fill: #f38ba8; }
+    .param { fill: #cba6f7; }
+    .dim { fill: #6c7086; }
+    text { font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Courier New', monospace; font-size: 14px; }
+
+    .line-1 { animation: fadeIn 0.3s ease-in 0.5s both; }
+    .line-2 { animation: fadeIn 0.3s ease-in 1.2s both; }
+    .line-3 { animation: fadeIn 0.3s ease-in 1.5s both; }
+    .line-4 { animation: fadeIn 0.3s ease-in 1.8s both; }
+    .line-5 { animation: fadeIn 0.3s ease-in 2.0s both; }
+    .line-6 { animation: fadeIn 0.3s ease-in 2.2s both; }
+    .line-7 { animation: fadeIn 0.3s ease-in 2.4s both; }
+    .line-8 { animation: fadeIn 0.3s ease-in 2.6s both; }
+    .line-9 { animation: fadeIn 0.3s ease-in 2.8s both; }
+    .line-10 { animation: fadeIn 0.3s ease-in 3.0s both; }
+    .line-11 { animation: fadeIn 0.3s ease-in 3.2s both; }
+    .line-12 { animation: fadeIn 0.3s ease-in 4.0s both; }
+    .line-13 { animation: fadeIn 0.3s ease-in 4.5s both; }
+    .line-14 { animation: fadeIn 0.3s ease-in 5.0s both; }
+    .line-15 { animation: fadeIn 0.3s ease-in 5.3s both; }
+    .line-16 { animation: fadeIn 0.3s ease-in 5.6s both; }
+    .cursor { animation: blink 1s step-end infinite; fill: #cdd6f4; }
+  </style>
+
+  <!-- Terminal window -->
+  <rect class="terminal-bg" x="0" y="0" width="850" height="540"/>
+
+  <!-- Title bar -->
+  <rect class="title-bar" x="0" y="0" width="850" height="36" rx="8" ry="8"/>
+  <rect class="title-bar" x="0" y="16" width="850" height="20"/>
+  <circle class="dot-red" cx="20" cy="18" r="6"/>
+  <circle class="dot-yellow" cx="40" cy="18" r="6"/>
+  <circle class="dot-green" cx="60" cy="18" r="6"/>
+  <text class="title-text" x="400" y="22" text-anchor="middle">endpoint-tester -- demo</text>
+
+  <!-- Line 1: scan command -->
+  <g class="line-1">
+    <text y="68" x="20">
+      <tspan class="prompt">$</tspan>
+      <tspan class="command"> npx endpoint-tester scan ./src</tspan>
+    </text>
+  </g>
+
+  <!-- Line 2: auto-detect output -->
+  <g class="line-2">
+    <text class="output" y="92" x="20">Auto-detected framework: <tspan class="success">express</tspan> (high confidence)</text>
+  </g>
+
+  <!-- Line 3: scanning message -->
+  <g class="line-3">
+    <text class="output" y="116" x="20">Scanning ./src for express endpoints...</text>
+  </g>
+
+  <!-- Line 4: found count -->
+  <g class="line-4">
+    <text class="success" y="140" x="20">Found 6 endpoint(s):</text>
+  </g>
+
+  <!-- Line 5-10: endpoints -->
+  <g class="line-5">
+    <text y="168" x="40">
+      <tspan class="method-get">GET    </tspan>
+      <tspan class="command"> /api/users</tspan>
+    </text>
+  </g>
+  <g class="line-6">
+    <text y="190" x="40">
+      <tspan class="method-post">POST   </tspan>
+      <tspan class="command"> /api/users</tspan>
+    </text>
+  </g>
+  <g class="line-7">
+    <text y="212" x="40">
+      <tspan class="method-get">GET    </tspan>
+      <tspan class="command"> /api/users/:id</tspan>
+      <tspan class="param">    [params: id]</tspan>
+    </text>
+  </g>
+  <g class="line-8">
+    <text y="234" x="40">
+      <tspan class="method-put">PUT    </tspan>
+      <tspan class="command"> /api/users/:id</tspan>
+      <tspan class="param">    [params: id]</tspan>
+    </text>
+  </g>
+  <g class="line-9">
+    <text y="256" x="40">
+      <tspan class="method-delete">DELETE </tspan>
+      <tspan class="command"> /api/users/:id</tspan>
+      <tspan class="param">    [params: id]</tspan>
+    </text>
+  </g>
+  <g class="line-10">
+    <text y="278" x="40">
+      <tspan class="method-get">GET    </tspan>
+      <tspan class="command"> /api/users/:id/orders</tspan>
+      <tspan class="param">  [params: id]</tspan>
+    </text>
+  </g>
+
+  <!-- Line 11: blank + second command -->
+  <g class="line-11">
+    <text y="310" x="20" class="dim">---</text>
+  </g>
+
+  <!-- Line 12: generate command -->
+  <g class="line-12">
+    <text y="340" x="20">
+      <tspan class="prompt">$</tspan>
+      <tspan class="command"> npx endpoint-tester generate ./src --format vitest</tspan>
+    </text>
+  </g>
+
+  <!-- Line 13: scanning -->
+  <g class="line-13">
+    <text class="output" y="364" x="20">Auto-detected framework: <tspan class="success">express</tspan> (high confidence)</text>
+  </g>
+
+  <!-- Line 14: found endpoints for generate -->
+  <g class="line-14">
+    <text class="output" y="388" x="20">Found 6 endpoint(s). Generating tests...</text>
+  </g>
+
+  <!-- Line 15: written to -->
+  <g class="line-15">
+    <text y="412" x="20">
+      <tspan class="success">Tests written to</tspan>
+      <tspan class="highlight"> ./generated-tests/endpoints.test.ts</tspan>
+    </text>
+  </g>
+
+  <!-- Line 16: done prompt -->
+  <g class="line-16">
+    <text y="448" x="20">
+      <tspan class="prompt">$</tspan>
+      <tspan class="cursor"> _</tspan>
+    </text>
+  </g>
+
+  <!-- Footer badge -->
+  <g class="line-16">
+    <text class="dim" y="490" x="20" font-size="12">13 frameworks supported: Express, FastAPI, Flask, Django, Spring Boot, Fastify, Koa, NestJS, Hono, Gin, Echo, Chi, net/http</text>
+  </g>
+  <g class="line-16">
+    <text class="dim" y="510" x="20" font-size="12">5 output formats: Vitest, Jest, Pytest, Go, OpenAPI 3.1</text>
+  </g>
+  <g class="line-16">
+    <text class="dim" y="530" x="20" font-size="12">+ Watch mode, CI baseline comparison, .endpointtesterrc config</text>
+  </g>
+</svg>
