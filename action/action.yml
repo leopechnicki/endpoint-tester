@@ -1,0 +1,112 @@
+name: 'endpoint-tester CI'
+description: 'Auto-discover API endpoints and fail CI if routes lack test coverage (baseline comparison).'
+author: 'Leonardo Pechnicki <leopsantos@hotmail.com>'
+
+branding:
+  icon: 'check-circle'
+  color: 'blue'
+
+inputs:
+  directory:
+    description: 'Directory to scan for API endpoints'
+    required: true
+    default: './src'
+  framework:
+    description: 'Framework to scan for (express, fastapi, spring, django, flask, fastify, koa, nestjs, hono, gin, echo, chi, nethttp). Auto-detected if omitted.'
+    required: false
+  baseline-file:
+    description: 'Path to the baseline JSON file'
+    required: false
+    default: '.endpoint-tester-baseline.json'
+  update-baseline:
+    description: 'Set to "true" to update the baseline instead of comparing'
+    required: false
+    default: 'false'
+  generate-tests:
+    description: 'Set to "true" to also generate test files'
+    required: false
+    default: 'false'
+  test-format:
+    description: 'Test format when generate-tests is true (vitest, jest, pytest, go, openapi)'
+    required: false
+    default: 'vitest'
+  test-output:
+    description: 'Output path for generated tests'
+    required: false
+    default: './generated-tests'
+  base-url:
+    description: 'Base URL for generated tests'
+    required: false
+    default: 'http://localhost:3000'
+  node-version:
+    description: 'Node.js version to use'
+    required: false
+    default: '20'
+
+outputs:
+  endpoint-count:
+    description: 'Number of endpoints discovered'
+    value: ${{ steps.run-ci.outputs.endpoint-count }}
+  status:
+    description: 'CI result: pass or fail'
+    value: ${{ steps.run-ci.outputs.status }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Install endpoint-tester
+      shell: bash
+      run: npm install -g endpoint-tester
+
+    - name: Run baseline comparison
+      id: run-ci
+      shell: bash
+      run: |
+        ARGS="${{ inputs.directory }}"
+
+        if [ -n "${{ inputs.framework }}" ]; then
+          ARGS="$ARGS --framework ${{ inputs.framework }}"
+        fi
+
+        ARGS="$ARGS --baseline-file ${{ inputs.baseline-file }}"
+
+        if [ "${{ inputs.update-baseline }}" = "true" ]; then
+          ARGS="$ARGS --update-baseline"
+        fi
+
+        echo "Running: endpoint-tester ci $ARGS"
+        OUTPUT=$(endpoint-tester ci $ARGS 2>&1) || EXIT_CODE=$?
+        echo "$OUTPUT"
+
+        # Extract endpoint count from output
+        COUNT=$(echo "$OUTPUT" | grep -oP 'Found \K\d+' || echo "0")
+        echo "endpoint-count=$COUNT" >> "$GITHUB_OUTPUT"
+
+        if [ "${EXIT_CODE:-0}" -ne 0 ]; then
+          echo "status=fail" >> "$GITHUB_OUTPUT"
+          exit 1
+        else
+          echo "status=pass" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Generate tests (optional)
+      if: inputs.generate-tests == 'true'
+      shell: bash
+      run: |
+        ARGS="${{ inputs.directory }}"
+
+        if [ -n "${{ inputs.framework }}" ]; then
+          ARGS="$ARGS --framework ${{ inputs.framework }}"
+        fi
+
+        ARGS="$ARGS --format ${{ inputs.test-format }}"
+        ARGS="$ARGS --output ${{ inputs.test-output }}"
+        ARGS="$ARGS --base-url ${{ inputs.base-url }}"
+
+        echo "Running: endpoint-tester generate $ARGS"
+        endpoint-tester generate $ARGS

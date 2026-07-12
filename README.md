@@ -394,6 +394,59 @@ endpoint-tester ci ./src --baseline-file ci/baseline.json
 
 Exit codes: `0` = pass (count same or higher), `1` = fail (count dropped below baseline).
 
+### GitHub Action
+
+Use the official GitHub Action to guard against endpoint regressions in CI:
+
+```yaml
+# .github/workflows/endpoint-check.yml
+name: Endpoint Check
+on: [push, pull_request]
+
+jobs:
+  check-endpoints:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leopechnicki/endpoint-tester@main
+        with:
+          directory: './src'
+          # framework: express    # optional -- auto-detected
+```
+
+The action will:
+1. Install `endpoint-tester` globally
+2. Run `endpoint-tester ci` against the specified directory
+3. Fail the CI check if any endpoints were removed since the baseline
+4. Auto-create the baseline on first run
+
+**Inputs:**
+
+| Input | Required | Default | Description |
+|---|---|---|---|
+| `directory` | yes | `./src` | Directory to scan |
+| `framework` | no | auto-detect | Framework override |
+| `baseline-file` | no | `.endpoint-tester-baseline.json` | Baseline file path |
+| `update-baseline` | no | `false` | Set `true` to save new baseline |
+| `generate-tests` | no | `false` | Also generate test files |
+| `test-format` | no | `vitest` | Format for generated tests |
+| `test-output` | no | `./generated-tests` | Output path for tests |
+| `base-url` | no | `http://localhost:3000` | Base URL for tests |
+| `node-version` | no | `20` | Node.js version |
+
+**Outputs:** `endpoint-count` (number of endpoints found), `status` (`pass` or `fail`).
+
+**Advanced: generate tests in CI**
+
+```yaml
+      - uses: leopechnicki/endpoint-tester@main
+        with:
+          directory: './src'
+          generate-tests: 'true'
+          test-format: 'vitest'
+          test-output: './tests/generated'
+```
+
 ## Config file
 
 Instead of repeating CLI flags on every run, you can set defaults in a `.endpointtesterrc` (or `.endpointtesterrc.json`) file in the root of the project you are scanning:
