@@ -30,9 +30,11 @@
   "dependencies": {
     "chokidar": "^5.0.0",
     "commander": "^14.0.0",
-    "glob": "^13.0.0"
+    "glob": "^13.0.0",
+    "js-yaml": "^4.3.0"
   },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.0.0",
     "eslint": "^9.0.0",
     "prettier": "^3.3.0",
